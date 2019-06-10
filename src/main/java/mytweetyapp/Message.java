@@ -13,11 +13,11 @@ import com.google.gson.Gson;
 */
 public class Message implements JSONMessage {
 	
-	private int msgNo;
-	private String from;
-	private String to;
-	private String header;
-	private String content;
+	public int msgNo;
+	public String from;
+	public String to;
+	public String header;
+	public String content;
 	private static Gson gson = new Gson();
 	
 	public String toJSON() {
