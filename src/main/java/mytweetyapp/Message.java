@@ -17,7 +17,8 @@ public class Message implements JSONMessage {
 	public String from;
 	public String to;
 	public String header;
-	public String content;
+	public Object content;
+	public int ticks;
 	private static Gson gson = new Gson();
 	
 	public String toJSON() {
@@ -41,14 +42,18 @@ public class Message implements JSONMessage {
 		this.header= header;
 	}
 	
-	public void setContent(String content) {
+	public void setContent(Object content) {
 		this.content= content;
+	}
+	
+	public void setTicks(int ticks) {
+		this.ticks= ticks;
 	}
 	
 	public String toString() {
 		return String.format("Message No: %d From: %s To: %s " +
-		"Header: %s Content: %s",
-		msgNo, from, to, header, content);
+		"Header: %s Content: %s Ticks: %o",
+		msgNo, from, to, header, content, ticks);
 	}
 }
 
