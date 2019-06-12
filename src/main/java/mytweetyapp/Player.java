@@ -14,6 +14,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.DeliverCallback;
 
+import net.sf.tweety.logics.pl.parser.PlParser;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
 
@@ -27,7 +28,7 @@ public class Player extends Thread{
 	
 	Set<Action> setOfActions;
 	String playerName;
-	int ticks = 0;
+	Integer ticks = 0;
 	
 	public Player(Set<Action> setOfActions, String playerName) {
 		this.playerName = playerName;
@@ -45,12 +46,6 @@ public class Player extends Thread{
     	Connection connection = factory.newConnection();
     	Channel channel = connection.createChannel();
     	channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-    	/*Message msg = new Message();
-    	msg.setFrom(this.playerName);
-    	msg.setTo("gameEngine");
-    	msg.setHeader("Hello World");
-    	msg.setContent("Hello World Again");
-    	*/
     	
     	channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
     	
@@ -61,7 +56,7 @@ public class Player extends Thread{
  
     }
     
-    private synchronized Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
+    private synchronized Set<Action> availableActions(Set<Action> setOfActions, Set stateOfGame){
 		//Set<Action> results = new HashSet<Action>();
 		
 		/**
@@ -84,7 +79,7 @@ public class Player extends Thread{
     public void run() {
     	
     	try {
-    		
+
         	String EXCHANGE_NAME = "cybergame_players";
         	ConnectionFactory factory = new ConnectionFactory();
         	factory.setHost("localhost");
@@ -93,7 +88,7 @@ public class Player extends Thread{
         	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
         	String queueName = channel.queueDeclare().getQueue();
         	channel.queueBind(queueName, EXCHANGE_NAME, "");
-        	System.out.println("Waiting for the messages.........");
+        	System.out.println(this.playerName + ": "+ "Waiting for the messages.........");
         	//DefaultConsumer consumer = new DefaultConsumer(channel);
         	//channel.basicConsume(queueName, true, consumer);
         	
@@ -111,28 +106,37 @@ public class Player extends Thread{
         	        //System.out.println(" [x] Received '" + message + "'");
         	        System.out.println("Received: " + Message.fromJSON(message).toString());
         	        if (Message.fromJSON(message).header == "inform-state") {
-        	        	if (Message.fromJSON(message).ticks == ticks) {
-        	        		Set<Action> availableActions = availableActions(setOfActions, (Set<PropositionalFormula>) Message.fromJSON(message).content);
+        	        	if (Message.fromJSON(message).ticks != ticks) {
+        	        		msg.setContent("pass");
+        	        	    ticks +=1;
+        	        	    msg.msgNo +=1;
+        	        	}
+        	        	else {
+        	            	PlParser parser = new PlParser();
+        	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula( (String) Message.fromJSON(message).content);
+        	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
         					int actionSize = availableActions.size();
         					List<Action> listactions = new ArrayList<Action>(availableActions);
         					Random rand = new Random();
         					int numChoice = rand.nextInt(actionSize); 
         					Action action = listactions.get(numChoice);
-        					msg.setContent(action);
+        					msg.setContent(action.actionName.getName());
+        	        	    ticks +=1;
+        	        	    msg.msgNo +=1;
         					
-        	        	}
-        	        	else {
-        	        		msg.setContent("pass");
         	        	}
         	        	
         	        }
         	    };
-
-        	    channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});
-
-        	    sendSingle(msg);
         	    
-        	    ticks +=1;
+        	    int queueMessageSize=channel.queueDeclarePassive(queueName).getMessageCount();
+        	    
+        	    if (queueMessageSize == 1) {
+            	    channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});
+            	    sendSingle(msg);
+        	    }
+        	    
+
         	}
     	}
     	catch (IOException e) {	

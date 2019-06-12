@@ -13,11 +13,11 @@ import com.google.gson.Gson;
 */
 public class Message implements JSONMessage {
 	
-	public int msgNo;
+	public int msgNo = 1;
 	public String from;
 	public String to;
 	public String header;
-	public Object content;
+	public String content;
 	public int ticks;
 	private static Gson gson = new Gson();
 	
@@ -42,7 +42,7 @@ public class Message implements JSONMessage {
 		this.header= header;
 	}
 	
-	public void setContent(Object content) {
+	public void setContent(String content) {
 		this.content= content;
 	}
 	

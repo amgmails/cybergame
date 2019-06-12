@@ -1,5 +1,6 @@
 package mytweetyapp;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +13,7 @@ import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.DeliverCallback;
 
 import net.sf.tweety.logics.pl.syntax.Proposition;
+import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
 
@@ -44,12 +46,20 @@ public class GameEngine extends Thread{
 	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 4, excelSheetNotDone, excelSheetDone);
 	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 10, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
 	
+	
 	public static Set<Action> setOfActions = new HashSet<Action>();
+	
+	Map<String, Action> actionMap = new HashMap<String, Action>();
 	
 	private void initialiseSetOfActions() {
 		setOfActions.add(reportWriting);
 		setOfActions.add(excelWork);
 		setOfActions.add(treatSensitiveFolder);
+		
+		actionMap.put(reportWriting.actionName.getName(), reportWriting);
+		actionMap.put(excelWork.actionName.getName(), excelWork);
+		actionMap.put(treatSensitiveFolder.actionName.getName(), treatSensitiveFolder);
+		
 	}
 
 	
@@ -104,15 +114,15 @@ public class GameEngine extends Thread{
     		initialiseSetOfActions();
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
-        	String EXCHANGE_NAME = "cybergame_gamengine";
+        	String EXCHANGE_NAME = "cybergame_gameengine";
         	ConnectionFactory factory = new ConnectionFactory();
         	factory.setHost("localhost");
         	Connection connection = factory.newConnection();
         	Channel channel = connection.createChannel();
-        	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+        	channel.exchangeDeclare(EXCHANGE_NAME, "direct");
         	String queueName = channel.queueDeclare().getQueue();
         	channel.queueBind(queueName, EXCHANGE_NAME, "");
-        	System.out.println("Waiting for the messages.........");
+        	System.out.println("Game engine: Waiting for the messages.........");
         	
         	Message msg = new Message();
         	msg.setFrom("gameEngine");
@@ -120,14 +130,19 @@ public class GameEngine extends Thread{
         	msg.setHeader("inform-game-on");
         	msg.setContent("inform-game-on");
         	msg.setTicks(ticks);
+        	
         	sendBulk(msg);
         	ticks +=1;
+        	msg.msgNo +=1;
         	
         	msg.setHeader("inform-state");
-        	msg.setContent(stateOfGame);
+        	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
+        	msg.setContent(state_of_game.toString());
         	msg.setTicks(ticks);
+        	
         	sendBulk(msg);
         	ticks +=1;
+        	msg.msgNo +=1;
         	
     		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
     	        String message = new String(delivery.getBody(), "UTF-8");
@@ -138,8 +153,9 @@ public class GameEngine extends Thread{
     	        	
     	        }
     	        else {
-    	        	updateStateOfGame((Action) Message.fromJSON(message).content);
-    	        	System.out.println("The action selected by player is: " + Message.fromJSON(message).content.toString());
+    	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
+    	        	updateStateOfGame(selectedAction);
+    	        	System.out.println("The action selected by player is: " + Message.fromJSON(message).content);
     	        }
     	    };
         	
@@ -152,9 +168,12 @@ public class GameEngine extends Thread{
         		}
         	    
         		msg.setTicks(ticks);
-        		msg.setContent(stateOfGame);
+        		state_of_game = new Conjunction(stateOfGame);
+        		msg.setContent(state_of_game.toString());
         		sendBulk(msg);
         	    ticks += 1;
+        	    msg.msgNo +=1;
+
         	}
     	}
     	catch (IOException e) {	
