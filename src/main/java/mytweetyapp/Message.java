@@ -13,7 +13,7 @@ import com.google.gson.Gson;
 */
 public class Message implements JSONMessage {
 	
-	public int msgNo = 1;
+	public int msgNo = 0;
 	public String from;
 	public String to;
 	public String header;

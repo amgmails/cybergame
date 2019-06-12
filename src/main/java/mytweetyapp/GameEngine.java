@@ -10,7 +10,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.GetResponse;
 
 import net.sf.tweety.logics.pl.syntax.Proposition;
 import net.sf.tweety.logics.pl.syntax.Conjunction;
@@ -26,8 +26,8 @@ public class GameEngine extends Thread{
 	
 	String engineName;
 	Map<String, Player> playerMap;
-	
 	public int ticks = 0;
+	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
 	public static PropositionalFormula top = new Proposition("top");
@@ -101,8 +101,8 @@ public class GameEngine extends Thread{
     	
     	System.out.println("Message is sent: " + msg.toString());
     	
-    	channel.close();
-    	connection.close();
+    	//channel.close();
+    	//connection.close();
  
     }
 
@@ -114,15 +114,13 @@ public class GameEngine extends Thread{
     		initialiseSetOfActions();
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
-        	String EXCHANGE_NAME = "cybergame_gameengine";
+        	String QUEUE_NAME = "cybergame_gameengine";
         	ConnectionFactory factory = new ConnectionFactory();
         	factory.setHost("localhost");
         	Connection connection = factory.newConnection();
         	Channel channel = connection.createChannel();
-        	channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-        	String queueName = channel.queueDeclare().getQueue();
-        	channel.queueBind(queueName, EXCHANGE_NAME, "");
-        	System.out.println("Game engine: Waiting for the messages.........");
+        	channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+        	System.out.println("Game engine Waiting for the messages.........");
         	
         	Message msg = new Message();
         	msg.setFrom("gameEngine");
@@ -132,8 +130,8 @@ public class GameEngine extends Thread{
         	msg.setTicks(ticks);
         	
         	sendBulk(msg);
-        	ticks +=1;
-        	msg.msgNo +=1;
+        	//ticks +=1;
+        	//msg.msgNo +=1;
         	
         	msg.setHeader("inform-state");
         	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
@@ -141,38 +139,40 @@ public class GameEngine extends Thread{
         	msg.setTicks(ticks);
         	
         	sendBulk(msg);
-        	ticks +=1;
+        	this.ticks +=1;
         	msg.msgNo +=1;
-        	
-    		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-    	        String message = new String(delivery.getBody(), "UTF-8");
-    	        //System.out.println(" [x] Received '" + message + "'");
-    	        System.out.println("Received: " + Message.fromJSON(message).toString());
-    	        
-    	        if (Message.fromJSON(message).content == "pass") {
-    	        	
-    	        }
-    	        else {
-    	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
-    	        	updateStateOfGame(selectedAction);
-    	        	System.out.println("The action selected by player is: " + Message.fromJSON(message).content);
-    	        }
-    	    };
         	
         	while (true) {
         		        		
-        		int queueMessageSize=channel.queueDeclarePassive(queueName).getMessageCount();
+        		int queueMessageSize=channel.queueDeclarePassive(QUEUE_NAME).getMessageCount();
         		
         		if (queueMessageSize == this.playerMap.size()) {
-        			channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+        			for (int i = 0; i < queueMessageSize ; i++ ) {
+        				GetResponse response = channel.basicGet(QUEUE_NAME, true);
+        				byte[] body = response.getBody();
+        				String message = new String(body);
+        				System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
+        				
+        				if (Message.fromJSON(message).content == "pass") {
+        					sendBulk(msg);
+        		        	this.ticks +=1;
+        		        	msg.msgNo +=1;
+            	        }
+        				else {
+            				Action selectedAction = actionMap.get(Message.fromJSON(message).content);
+            	        	updateStateOfGame(selectedAction);
+            	        	System.out.println("The action selected by player is: " + Message.fromJSON(message).content);
+                    		msg.setTicks(ticks);
+                    		state_of_game = new Conjunction(stateOfGame);
+                    		msg.setContent(state_of_game.toString());
+                    		sendBulk(msg);
+                    	    this.ticks += 1;
+                    	    msg.msgNo +=1;
+        				}
+
+        	        	
+        			}
         		}
-        	    
-        		msg.setTicks(ticks);
-        		state_of_game = new Conjunction(stateOfGame);
-        		msg.setContent(state_of_game.toString());
-        		sendBulk(msg);
-        	    ticks += 1;
-        	    msg.msgNo +=1;
 
         	}
     	}

@@ -12,7 +12,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.GetResponse;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
@@ -28,7 +28,7 @@ public class Player extends Thread{
 	
 	Set<Action> setOfActions;
 	String playerName;
-	Integer ticks = 0;
+	public int ticks = 0;
 	
 	public Player(Set<Action> setOfActions, String playerName) {
 		this.playerName = playerName;
@@ -40,19 +40,18 @@ public class Player extends Thread{
     		throws InterruptedException, IOException, TimeoutException 
     {
     	
-    	String EXCHANGE_NAME = "cybergame_gameengine";
+    	String QUEUE_NAME = "cybergame_gameengine";
     	ConnectionFactory factory = new ConnectionFactory();
     	factory.setHost("localhost");
     	Connection connection = factory.newConnection();
     	Channel channel = connection.createChannel();
-    	channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-    	
-    	channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
+    	channel.queueDeclare(QUEUE_NAME, false, false, false, null);   	
+    	channel.basicPublish("", QUEUE_NAME, null, msg.toJSON().getBytes());
     	
     	System.out.println("Message is sent: " + msg.toString());
     	
-    	channel.close();
-    	connection.close();
+    	//channel.close();
+    	//connection.close();
  
     }
     
@@ -89,8 +88,7 @@ public class Player extends Thread{
         	String queueName = channel.queueDeclare().getQueue();
         	channel.queueBind(queueName, EXCHANGE_NAME, "");
         	System.out.println(this.playerName + ": "+ "Waiting for the messages.........");
-        	//DefaultConsumer consumer = new DefaultConsumer(channel);
-        	//channel.basicConsume(queueName, true, consumer);
+
         	
         	Message msg = new Message();
         	msg.setFrom(this.playerName);
@@ -100,40 +98,40 @@ public class Player extends Thread{
         	
        	
         	while (true) {
-        		
-        		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-        	        String message = new String(delivery.getBody(), "UTF-8");
-        	        //System.out.println(" [x] Received '" + message + "'");
-        	        System.out.println("Received: " + Message.fromJSON(message).toString());
-        	        if (Message.fromJSON(message).header == "inform-state") {
-        	        	if (Message.fromJSON(message).ticks != ticks) {
-        	        		msg.setContent("pass");
-        	        	    ticks +=1;
-        	        	    msg.msgNo +=1;
-        	        	}
-        	        	else {
-        	            	PlParser parser = new PlParser();
-        	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula( (String) Message.fromJSON(message).content);
-        	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-        					int actionSize = availableActions.size();
-        					List<Action> listactions = new ArrayList<Action>(availableActions);
-        					Random rand = new Random();
-        					int numChoice = rand.nextInt(actionSize); 
-        					Action action = listactions.get(numChoice);
-        					msg.setContent(action.actionName.getName());
-        	        	    ticks +=1;
-        	        	    msg.msgNo +=1;
-        					
-        	        	}
-        	        	
-        	        }
-        	    };
-        	    
+        		        		        	    
         	    int queueMessageSize=channel.queueDeclarePassive(queueName).getMessageCount();
         	    
         	    if (queueMessageSize == 1) {
-            	    channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});
-            	    sendSingle(msg);
+        	    	GetResponse response = channel.basicGet(queueName, true);
+    				byte[] body = response.getBody();
+    				String message = new String(body);
+    				System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
+    				
+    				if (Message.fromJSON(message).header == "inform-state") {
+    					if (Message.fromJSON(message).ticks != this.ticks) {
+    						msg.setContent("pass");
+    						sendSingle(msg);
+    	            	    this.ticks += 1;
+    	            	    msg.msgNo +=1;
+    	            	    System.out.println("i am in the different ticks scenario");
+    					}
+    					else {
+    		            	PlParser parser = new PlParser();
+    		            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula( (String) Message.fromJSON(message).content);
+    		        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
+    						int actionSize = availableActions.size();
+    						List<Action> listactions = new ArrayList<Action>(availableActions);
+    						Random rand = new Random();
+    						int numChoice = rand.nextInt(actionSize); 
+    						Action action = listactions.get(numChoice);
+    						msg.setContent(action.actionName.getName());
+    						sendSingle(msg);
+    	            	    this.ticks += 1;
+    	            	    msg.msgNo +=1;
+    	            	    System.out.println("i am in the same ticks scenario");
+    					}
+    				}
+
         	    }
         	    
 
