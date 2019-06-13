@@ -1,16 +1,14 @@
 package mytweetyapp;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
+
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.GetResponse;
+import com.rabbitmq.client.DeliverCallback;
 
 import net.sf.tweety.logics.pl.syntax.Proposition;
 import net.sf.tweety.logics.pl.syntax.Conjunction;
@@ -26,7 +24,6 @@ public class GameEngine extends Thread{
 	
 	String engineName;
 	Map<String, Player> playerMap;
-	public int ticks = 0;
 	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
@@ -86,24 +83,67 @@ public class GameEngine extends Thread{
 		this.playerMap = playerMap;
 	}
 	
-    private synchronized void sendBulk(Message msg) 
-    		throws InterruptedException, IOException, TimeoutException 
-    {
+//    private /*synchronized*/ void sendBulk(Message msg) 
+//    		throws InterruptedException, IOException, TimeoutException 
+//    {
+//    	
+//    	String EXCHANGE_NAME = "cybergame_players";
+//    	ConnectionFactory factory = new ConnectionFactory();
+//    	factory.setHost("localhost");
+//    	Connection connection = factory.newConnection();
+//    	Channel channel = connection.createChannel();
+//    	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+//    	
+//    	channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
+//    	
+//    	System.out.println("Message is sent: " + msg.toString());
+//    	
+//    	channel.close();
+//    	connection.close();
+// 
+//    }
+    
+    private void sendBulk(Message msg) throws Exception {
+
+        String EXCHANGE_NAME = "cybergame_players";
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("localhost");
+        
+        try (Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
+            
+            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+            channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
+            System.out.println("Message is sent: " + msg.toString());
+        }
+        
+    }
+    
+
+    
+    private void receive(Message message) throws Exception {
+    	Message msg = new Message();
+    	msg.setFrom("gameEngine");
+    	msg.setTo("players");
+    	msg.setHeader("inform-state");
+    	String content = message.content;
     	
-    	String EXCHANGE_NAME = "cybergame_players";
-    	ConnectionFactory factory = new ConnectionFactory();
-    	factory.setHost("localhost");
-    	Connection connection = factory.newConnection();
-    	Channel channel = connection.createChannel();
-    	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+    	if (content == "pass") {
+    		sendBulk(msg);
+        	msg.ticks +=1;
+        	msg.msgNo +=1;
+    	}
+    	else {
+        	System.out.println("The action selected by player is: " + content);
+        	Action selectedAction = actionMap.get(content);
+        	updateStateOfGame(selectedAction);
+        	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
+        	msg.setContent(state_of_game.toString());
+        	sendBulk(msg);
+    	    msg.ticks += 1;
+    	    msg.msgNo +=1;
+    	} 	
     	
-    	channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
-    	
-    	System.out.println("Message is sent: " + msg.toString());
-    	
-    	//channel.close();
-    	//connection.close();
- 
     }
 
     
@@ -127,7 +167,6 @@ public class GameEngine extends Thread{
         	msg.setTo("players");
         	msg.setHeader("inform-game-on");
         	msg.setContent("inform-game-on");
-        	msg.setTicks(ticks);
         	
         	sendBulk(msg);
         	//ticks +=1;
@@ -136,57 +175,31 @@ public class GameEngine extends Thread{
         	msg.setHeader("inform-state");
         	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
         	msg.setContent(state_of_game.toString());
-        	msg.setTicks(ticks);
+        	msg.ticks +=1;
         	
         	sendBulk(msg);
-        	this.ticks +=1;
+        	msg.ticks +=1;
         	msg.msgNo +=1;
+        	
+        	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+        	    String message = new String(delivery.getBody(), "UTF-8");
+        	    System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
+        	    try {
+        	    	receive(Message.fromJSON(message));
+        	    }
+        	    catch (Exception e){
+        	    }
+        	};
+        	
         	
         	while (true) {
         		        		
-        		int queueMessageSize=channel.queueDeclarePassive(QUEUE_NAME).getMessageCount();
-        		
-        		if (queueMessageSize == this.playerMap.size()) {
-        			for (int i = 0; i < queueMessageSize ; i++ ) {
-        				GetResponse response = channel.basicGet(QUEUE_NAME, true);
-        				byte[] body = response.getBody();
-        				String message = new String(body);
-        				System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
-        				
-        				if (Message.fromJSON(message).content == "pass") {
-        					sendBulk(msg);
-        		        	this.ticks +=1;
-        		        	msg.msgNo +=1;
-            	        }
-        				else {
-            				Action selectedAction = actionMap.get(Message.fromJSON(message).content);
-            	        	updateStateOfGame(selectedAction);
-            	        	System.out.println("The action selected by player is: " + Message.fromJSON(message).content);
-                    		msg.setTicks(ticks);
-                    		state_of_game = new Conjunction(stateOfGame);
-                    		msg.setContent(state_of_game.toString());
-                    		sendBulk(msg);
-                    	    this.ticks += 1;
-                    	    msg.msgNo +=1;
-        				}
-
-        	        	
-        			}
-        		}
+        		channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> { System.out.println(consumerTag.toString());});
 
         	}
     	}
-    	catch (IOException e) {	
+    	catch (Exception e) {	
     	}
-    	catch (ConsumerCancelledException e) {
-    	}
-    	catch (TimeoutException e) {
-    	}
-    	catch (InterruptedException e) {
-    	}
-    }
-    
-    
-    
+    }   
 
 }
