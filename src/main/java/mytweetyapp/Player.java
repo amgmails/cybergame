@@ -8,12 +8,12 @@ import java.util.Set;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-//import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.AMQP.Queue;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
-//import net.sf.tweety.logics.pl.syntax.Conjunction;
+import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
 
@@ -28,6 +28,7 @@ public class Player extends Thread{
 	Set<Action> setOfActions;
 	String playerName;
 	
+	
 	public Player(Set<Action> setOfActions, String playerName) {
 		this.playerName = playerName;
 		this.setOfActions = setOfActions;
@@ -36,14 +37,14 @@ public class Player extends Thread{
 	
     private void sendSingle(Message msg) throws Exception {
     	
-    	String QUEUE_NAME = "cybergame_gameengine";
+    	String EXCHANGE_NAME = "cybergame_gameengine";
     	ConnectionFactory factory = new ConnectionFactory();
     	factory.setHost("localhost");
     	
     	try (Connection connection = factory.newConnection();
                 Channel channel = connection.createChannel()) {
-    		channel.queueDeclare(QUEUE_NAME, false, false, false, null);
-    		channel.basicPublish("", QUEUE_NAME, null, msg.toJSON().getBytes());
+    		channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+    		channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
         	System.out.println("Message is sent: " + msg.toString());
     	}
     }
@@ -129,63 +130,90 @@ public class Player extends Thread{
         	msg.ticks =0;
         	msg.msgNo =0;
         	
-//        	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-//        	    String message = new String(delivery.getBody(), "UTF-8");
-//        	    System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-//        	    try {
+        	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+        	    String message = new String(delivery.getBody(), "UTF-8");
+        	    System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
+        	    if (Message.fromJSON(message).header.toString() == "inform-game-on") {
+    				System.out.println("Just an information, i do nothing");
+	        	    msg.ticks += 1;
+	        	    msg.msgNo +=1;
+    			}
+    			else {
+    				if (Message.fromJSON(message).ticks != msg.ticks) {
+    					
+    					System.out.println("Ticks do not coincide, i decide to pass");
+    					msg.setContent("pass");
+    				}
+    				else {
+    	            	PlParser parser = new PlParser();
+    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content.toString());
+    	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
+    					int actionSize = availableActions.size();
+    					List<Action> listactions = new ArrayList<Action>(availableActions);
+    					Random rand = new Random();
+    					int numChoice = rand.nextInt(actionSize); 
+    					Action action = listactions.get(numChoice);
+    					msg.setContent(action.actionName.getName().toString());
+    				}
+    			}
+        	    
+        	    try {
+        	    sendSingle(msg);
+        	    msg.ticks += 1;
+        	    msg.msgNo +=1;
 //        	    	receive(Message.fromJSON(message));
-//        	    }
-//        	    catch (Exception e){
-//        	    }
-//        	};	
+        	    }
+        	    catch (Exception e){
+        	    }
+        	};	
        	
         	while (true) {
-        		wait(1000);
-        		//channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
-        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
-        		System.out.println(feedback.getMessageCount());
         		
-        		while (feedback.getMessageCount() < 1) {
-        			wait(1000);
-        			feedback = channel.queueDeclarePassive(queueName);
-        		}
-        		
-        		for (int i = 0; i < feedback.getMessageCount(); i++) {
-	        		boolean autoAck = true;
-	    			GetResponse response = channel.basicGet(queueName, autoAck);
-	    			byte[] body = response.getBody();
-	    			String message = new String(body);
-	    			System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-	    			
-	    			if (Message.fromJSON(message).header == "inform-game-on") {
-	    				System.out.println("Just an information, i do nothing");
-		        	    msg.ticks += 1;
-		        	    msg.msgNo +=1;
-	    			}
-	    			else {
-	    				if (Message.fromJSON(message).ticks != msg.ticks) {
-	    					System.out.println("Ticks do not coincide, i decide to pass");
-	    					msg.setContent("pass");
-	    					sendSingle(msg);
-	    	        	    msg.ticks += 1;
-	    	        	    msg.msgNo +=1;
-	    				}
-	    				else {
-	    	            	PlParser parser = new PlParser();
-	    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content);
-	    	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-	    					int actionSize = availableActions.size();
-	    					List<Action> listactions = new ArrayList<Action>(availableActions);
-	    					Random rand = new Random();
-	    					int numChoice = rand.nextInt(actionSize); 
-	    					Action action = listactions.get(numChoice);
-	    					msg.setContent(action.actionName.getName());
-	    					sendSingle(msg);
-	    	        	    msg.ticks += 1;
-	    	        	    msg.msgNo +=1;
-	    				}
-	    			}
-        		}
+        		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+//        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
+//        		System.out.println(feedback.toString());
+//        		
+//        		while (feedback.getMessageCount() < 1) {
+//        			wait(1000);
+//        			feedback = channel.queueDeclarePassive(queueName);
+//        		}
+//        		
+//        		for (int i = 0; i < feedback.getMessageCount(); i++) {
+//	        		boolean autoAck = true;
+//	    			GetResponse response = channel.basicGet(queueName, autoAck);
+//	    			byte[] body = response.getBody();
+//	    			String message = new String(body);
+//	    			System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
+//	    			
+//	    			if (Message.fromJSON(message).header == "inform-game-on") {
+//	    				System.out.println("Just an information, i do nothing");
+//		        	    msg.ticks += 1;
+//		        	    msg.msgNo +=1;
+//	    			}
+//	    			else {
+//	    				if (Message.fromJSON(message).ticks != msg.ticks) {
+//	    					System.out.println("Ticks do not coincide, i decide to pass");
+//	    					msg.setContent("pass");
+//	    					sendSingle(msg);
+//	    	        	    msg.ticks += 1;
+//	    	        	    msg.msgNo +=1;
+//	    				}
+//	    				else {
+//	    	            	PlParser parser = new PlParser();
+//	    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content);
+//	    	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
+//	    					int actionSize = availableActions.size();
+//	    					List<Action> listactions = new ArrayList<Action>(availableActions);
+//	    					Random rand = new Random();
+//	    					int numChoice = rand.nextInt(actionSize); 
+//	    					Action action = listactions.get(numChoice);
+//	    					msg.setContent(action.actionName.getName());
+//	    					sendSingle(msg);
+//	    	        	    msg.ticks += 1;
+//	    	        	    msg.msgNo +=1;
+//	    				}
+//	    			}
+//        		}
 
         	}
     	}
