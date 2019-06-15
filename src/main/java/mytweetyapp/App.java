@@ -60,7 +60,7 @@ public class App {
 		 */
 		
 		Map<String, Player> playerMap = new HashMap<String, Player>();
-        for (int k=0; k<1; k++){
+        for (int k=0; k<200; k++){
         	String playerName = "agent_" + Integer.toString(k);
         	playerMap.put(playerName, new Player(setOfActions, playerName));
         	playerMap.get(playerName).start();

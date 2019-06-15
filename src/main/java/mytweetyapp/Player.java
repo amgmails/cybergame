@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.codehaus.jackson.map.ObjectMapper;
+//import org.codehaus.jackson.map.ObjectMapper;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -14,7 +14,7 @@ import com.rabbitmq.client.DeliverCallback;
 //import com.rabbitmq.client.GetResponse;
 //import com.rabbitmq.client.AMQP.Queue;
 
-//import net.sf.tweety.logics.pl.parser.PlParser;
+import net.sf.tweety.logics.pl.parser.PlParser;
 //import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
@@ -49,11 +49,11 @@ public class Player extends Thread{
     		Connection connection = factory.newConnection();
         	Channel channel = connection.createChannel();
     		channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-    		//channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
+    		channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
     		//channel.basicPublish(EXCHANGE_NAME, "", null, Util.fromJavaToJson(msg).getBytes());
-    		ObjectMapper mapper = new ObjectMapper();
-            String jsonString = mapper.writeValueAsString(msg);
-            channel.basicPublish(EXCHANGE_NAME, "", null, jsonString.getBytes("UTF-8"));
+    		//ObjectMapper mapper = new ObjectMapper();
+            //String jsonString = mapper.writeValueAsString(msg);
+            //channel.basicPublish(EXCHANGE_NAME, "", null, jsonString.getBytes("UTF-8"));
         	System.out.println("Message is sent: " + msg.toString());
     	//}
     }
@@ -141,39 +141,39 @@ public class Player extends Thread{
         	
         	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
         	    String message = new String(delivery.getBody(), "UTF-8");
-        	    ObjectMapper mapper = new ObjectMapper();
-        	    Message messageobject = mapper.readValue(message, Message.class);
-        	    //System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-        	    System.out.println(this.playerName + " Received: " + messageobject.toString());
-        	    //if (Message.fromJSON(message).header.toString() == "inform-game-on") {
-        	    if (messageobject.header.contentEquals("inform-game-on")) {
+        	    //ObjectMapper mapper = new ObjectMapper();
+        	    //Message messageobject = mapper.readValue(message, Message.class);
+        	    System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
+        	    //System.out.println(this.playerName + " Received: " + messageobject.toString());
+        	    if (Message.fromJSON(message).header.toString().contentEquals("inform-game-on")) {
+        	    //if (messageobject.header.contentEquals("inform-game-on")) {
     				System.out.println(this.playerName +": just an information, i do nothing");
-	        	    msg.ticks += 1;
-	        	    msg.msgNo +=1;
+
     			}
     			else {
     				System.out.println("In the situation where game content is not <<inform-game-on>>");
-    				//if (Message.fromJSON(message).ticks != msg.ticks) {
-    				if (messageobject.ticks != msg.ticks) {
+    				System.out.println(String.format("Message ticks :%o, msg.ticks: %o", Message.fromJSON(message).ticks, msg.ticks));
+    				if (Message.fromJSON(message).ticks != msg.ticks) {
+    				//if (messageobject.ticks != msg.ticks) {
     					
     					System.out.println("Ticks do not coincide, i decide to pass");
     					msg.setContent("pass");
     				}
     				else {
     					System.out.println("In the situation where game content is not <<inform-game-on>> and ticks coincide");
-    	            	//PlParser parser = new PlParser();
-    	            	//PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content.toString());
-    	        		//Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
+    	            	PlParser parser = new PlParser();
+    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content.toString());
+    	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
     					//Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-    					Set<PropositionalFormula> state_of_game =  (Set<PropositionalFormula>) messageobject.content;
-    					Set<Action> availableActions = availableActions(setOfActions, state_of_game);
+    					//Set<PropositionalFormula> state_of_game =  (Set<PropositionalFormula>) messageobject.content;
+    					//Set<Action> availableActions = availableActions(setOfActions, state_of_game);
     					int actionSize = availableActions.size();
     					List<Action> listactions = new ArrayList<Action>(availableActions);
     					Random rand = new Random();
     					int numChoice = rand.nextInt(actionSize); 
     					Action action = listactions.get(numChoice);
-    					//msg.setContent(action.actionName.getName().toString());
-    					msg.setContent(action);
+    					msg.setContent(action.actionName.getName().toString());
+    					//msg.setContent(action);
     				}
     			}
         	    
