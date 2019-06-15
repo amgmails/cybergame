@@ -9,11 +9,13 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
-import com.rabbitmq.client.GetResponse;
+//import com.rabbitmq.client.GetResponse;
 
 import net.sf.tweety.logics.pl.syntax.Proposition;
-import net.sf.tweety.logics.pl.syntax.Conjunction;
+//import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
+
+import org.codehaus.jackson.map.ObjectMapper;
 
 
 /*
@@ -110,13 +112,21 @@ public class GameEngine extends Thread{
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
         
-        try (Connection connection = factory.newConnection();
-             Channel channel = connection.createChannel()) {
+        //try (Connection connection = factory.newConnection();
+             //Channel channel = connection.createChannel()) {
             
+        	Connection connection = factory.newConnection();
+        	Channel channel = connection.createChannel();
+        
             channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-            channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
+            //channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
+            //channel.basicPublish(EXCHANGE_NAME, "", null, Util.fromJavaToJson(msg).getBytes("UTF-8"));
+            ObjectMapper mapper = new ObjectMapper(); // taken on https://www.mkyong.com/java/jackson-2-convert-java-object-to-from-json/
+            String jsonString = mapper.writeValueAsString(msg);
+            System.out.println("i have reached there "+ jsonString);
+            channel.basicPublish(EXCHANGE_NAME, "", null, jsonString.getBytes("UTF-8"));
             System.out.println("Message is sent: " + msg.toString());
-        }
+        //}
         
     }
     
@@ -176,33 +186,46 @@ public class GameEngine extends Thread{
         	//msg.msgNo +=1;
         	
         	msg.setHeader("inform-state");
-        	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
-        	msg.setContent(state_of_game.toString());
+        	//PropositionalFormula state_of_game = new Conjunction(stateOfGame);
+        	//msg.setContent(state_of_game.toString());
+        	msg.setContent(stateOfGame);
+        	
         	msg.ticks +=1;
         	msg.msgNo +=1;
         	
         	sendBulk(msg);
+        	
         	msg.ticks +=1;
         	msg.msgNo +=1;
         	
+        	
         	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
         	    String message = new String(delivery.getBody(), "UTF-8");
-        	    System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
-        	    if (Message.fromJSON(message).content.toString() == "pass") {
-    				System.out.println("Player "+ Message.fromJSON(message).from + " decided to pass");
+        	    ObjectMapper mapper = new ObjectMapper();
+        	    Message messageobject = mapper.readValue(message, Message.class);
+        	    //System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
+        	    //System.out.println("Game engine Received: " + Util.fromJsonToJava(message, Message.class).toString());
+        	    System.out.println("Game engine Received: " + messageobject.toString());
+        	    //if (Message.fromJSON(message).content.toString() == "pass") {
+        	    if (messageobject.content.toString().contentEquals("pass")) {
+    				//System.out.println("Player "+ Message.fromJSON(message).from + " decided to pass");
+        	    	System.out.println("Player "+ messageobject.from + " decided to pass");
     			}
     			else {
-    	        	System.out.println("else branch Player " + Message.fromJSON(message).from + " selected action " +  Message.fromJSON(message).content);
-    	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
+    	        	//System.out.println("Player " + Message.fromJSON(message).from + " selected action " +  Message.fromJSON(message).content);
+    				Action selectedAction = (Action) messageobject.content;
+    				System.out.println("Player " + messageobject.from + " selected action " +  selectedAction.actionName);
+    	        	//Action selectedAction = actionMap.get(Message.fromJSON(message).content);
     	        	updateStateOfGame(selectedAction);
-    	        	System.out.println("State of game updated with action " + Message.fromJSON(message).content);
+    	        	System.out.println("State of game updated with action " + selectedAction.actionName);
     			}
         	};
         	
         	
         	while (true) {
         		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
-        		if (feedback.getMessageCount() == playerMap.size()) {
+        		System.out.println(feedback.getMessageCount());
+        		if (feedback.getMessageCount() <= playerMap.size()) {
 	        		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
 	//        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
 	//        		
@@ -230,8 +253,9 @@ public class GameEngine extends Thread{
 	//        			}
 	//        		}
 	        		
-		        	state_of_game = new Conjunction(stateOfGame);
-	            	msg.setContent(state_of_game.toString());
+		        	//state_of_game = new Conjunction(stateOfGame);
+	            	//msg.setContent(state_of_game.toString());
+	        		msg.setContent(stateOfGame);
 	            	sendBulk(msg);
 	        	    msg.ticks += 1;
 	        	    msg.msgNo +=1;
