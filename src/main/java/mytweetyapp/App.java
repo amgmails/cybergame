@@ -21,9 +21,21 @@ public class App {
 	public static PropositionalFormula sensitiveFolderNotTreated = new Proposition("sensitiveFolderNotTreated");
 	public static PropositionalFormula sensitiveFolderTreated = new Proposition("sensitiveFolderTreated");
 	
+	public static PropositionalFormula ANotDone = new Proposition("ANotDone");
+	public static PropositionalFormula ADone = new Proposition("ADone");
+	
+	public static PropositionalFormula BNotDone = new Proposition("BNotDone");
+	public static PropositionalFormula BDone = new Proposition("BDone");
+	
+	public static PropositionalFormula CNotDone = new Proposition("CNotDone");
+	public static PropositionalFormula CDone = new Proposition("CDone");
+	
 	public static Action reportWriting = new Action(new Proposition("reportWriting"), 20, 8, reportNotWritten, reportWritten);
-	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 4, excelSheetNotDone, excelSheetDone);
-	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 10, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
+	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 6, excelSheetNotDone, excelSheetDone);
+	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 13, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
+	public static Action A = new Action(new Proposition("A"), 25, 15, ANotDone, ADone);
+	public static Action B = new Action(new Proposition("B"), 19, 10, BNotDone, BDone);
+	public static Action C = new Action(new Proposition("C"), 8, 1, CNotDone, CDone);
 	
 	public static Set<Action> setOfActions = new HashSet<Action>();
 	
@@ -31,6 +43,9 @@ public class App {
 		setOfActions.add(reportWriting);
 		setOfActions.add(excelWork);
 		setOfActions.add(treatSensitiveFolder);
+		setOfActions.add(A);
+		setOfActions.add(B);
+		setOfActions.add(C);
 	}
 
 	
@@ -60,7 +75,7 @@ public class App {
 		 */
 		
 		Map<String, Player> playerMap = new HashMap<String, Player>();
-        for (int k=0; k<200; k++){
+        for (int k=0; k<1; k++){
         	String playerName = "agent_" + Integer.toString(k);
         	playerMap.put(playerName, new Player(setOfActions, playerName));
         	playerMap.get(playerName).start();

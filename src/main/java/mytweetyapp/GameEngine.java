@@ -41,25 +41,51 @@ public class GameEngine extends Thread{
 	
 	public static PropositionalFormula sensitiveFolderNotTreated = new Proposition("sensitiveFolderNotTreated");
 	public static PropositionalFormula sensitiveFolderTreated = new Proposition("sensitiveFolderTreated");
+
+	public static PropositionalFormula ANotDone = new Proposition("ANotDone");
+	public static PropositionalFormula ADone = new Proposition("ADone");
+	
+	public static PropositionalFormula BNotDone = new Proposition("BNotDone");
+	public static PropositionalFormula BDone = new Proposition("BDone");
+	
+	public static PropositionalFormula CNotDone = new Proposition("CNotDone");
+	public static PropositionalFormula CDone = new Proposition("CDone");
 	
 	public static Action reportWriting = new Action(new Proposition("reportWriting"), 20, 8, reportNotWritten, reportWritten);
-	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 4, excelSheetNotDone, excelSheetDone);
-	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 10, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
+	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 6, excelSheetNotDone, excelSheetDone);
+	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 13, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
+	public static Action A = new Action(new Proposition("A"), 25, 15, ANotDone, ADone);
+	public static Action B = new Action(new Proposition("B"), 19, 10, BNotDone, BDone);
+	public static Action C = new Action(new Proposition("C"), 8, 1, CNotDone, CDone);
 	
 	
 	public static Set<Action> setOfActions = new HashSet<Action>();
 	
-	Map<String, Action> actionMap = new HashMap<String, Action>();
+	public static Map<String, Action> actionMap = new HashMap<String, Action>();
+	public static Map<String, Integer> scoreMap = new HashMap<String, Integer>();
 	
 	private void initialiseSetOfActions() {
 		setOfActions.add(reportWriting);
 		setOfActions.add(excelWork);
 		setOfActions.add(treatSensitiveFolder);
+		setOfActions.add(A);
+		setOfActions.add(B);
+		setOfActions.add(C);
 		
 		actionMap.put(reportWriting.actionName.getName(), reportWriting);
 		actionMap.put(excelWork.actionName.getName(), excelWork);
 		actionMap.put(treatSensitiveFolder.actionName.getName(), treatSensitiveFolder);
+		actionMap.put(A.actionName.getName(), A);
+		actionMap.put(B.actionName.getName(), B);
+		actionMap.put(C.actionName.getName(), C);
+	}
+	
+	private void initialiseScores() {
 		
+		for (String playerName:playerMap.keySet()) {
+			scoreMap.put(playerName, 0);
+		}
+
 	}
 
 	
@@ -81,81 +107,31 @@ public class GameEngine extends Thread{
 		stateOfGame.add(action.postCondition);
 	}
 	
+	public void updateScore(String playerName, Action action) {
+		int oldValue = scoreMap.get(playerName);
+		scoreMap.replace(playerName, oldValue + action.benefit - action.cost);
+	}
+	
 	public GameEngine(Map<String, Player> playerMap, String engineName) {
 		this.engineName = engineName;
 		this.playerMap = playerMap;
 	}
 	
-//    private /*synchronized*/ void sendBulk(Message msg) 
-//    		throws InterruptedException, IOException, TimeoutException 
-//    {
-//    	
-//    	String EXCHANGE_NAME = "cybergame_players";
-//    	ConnectionFactory factory = new ConnectionFactory();
-//    	factory.setHost("localhost");
-//    	Connection connection = factory.newConnection();
-//    	Channel channel = connection.createChannel();
-//    	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-//    	
-//    	channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
-//    	
-//    	System.out.println("Message is sent: " + msg.toString());
-//    	
-//    	channel.close();
-//    	connection.close();
-// 
-//    }
-    
+   
     private void sendBulk(Message msg) throws Exception {
 
         String EXCHANGE_NAME = "cybergame_players";
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
-        
-        //try (Connection connection = factory.newConnection();
-             //Channel channel = connection.createChannel()) {
             
-        	Connection connection = factory.newConnection();
-        	Channel channel = connection.createChannel();
-        
-            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-            channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
-            //channel.basicPublish(EXCHANGE_NAME, "", null, Util.fromJavaToJson(msg).getBytes("UTF-8"));
-            //ObjectMapper mapper = new ObjectMapper(); // taken on https://www.mkyong.com/java/jackson-2-convert-java-object-to-from-json/
-            //String jsonString = mapper.writeValueAsString(msg);
-            //System.out.println("i have reached there "+ jsonString);
-            //channel.basicPublish(EXCHANGE_NAME, "", null, jsonString.getBytes("UTF-8"));
-            System.out.println("Message is sent: " + msg.toString());
-        //}
+    	Connection connection = factory.newConnection();
+    	Channel channel = connection.createChannel();
+    
+        channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+        channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
+        System.out.println("Message is sent: " + msg.toString());
         
     }
-    
-
-    
-//    private void receive(Message message) throws Exception {
-//    	Message msg = new Message();
-//    	msg.setFrom("gameEngine");
-//    	msg.setTo("players");
-//    	msg.setHeader("inform-state");
-//    	String content = message.content;
-//    	
-//    	if (content == "pass") {
-//    		sendBulk(msg);
-//        	msg.ticks +=1;
-//        	msg.msgNo +=1;
-//    	}
-//    	else {
-//        	System.out.println("The action selected by player is: " + content);
-//        	Action selectedAction = actionMap.get(content);
-//        	updateStateOfGame(selectedAction);
-//        	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
-//        	msg.setContent(state_of_game.toString());
-//        	sendBulk(msg);
-//    	    msg.ticks += 1;
-//    	    msg.msgNo +=1;
-//    	} 	
-//    	
-//    }
 
     
     @Override
@@ -165,6 +141,7 @@ public class GameEngine extends Thread{
     		initialiseSetOfActions();
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
+    		initialiseScores();
         	String EXCHANGE_NAME = "cybergame_gameengine";
         	ConnectionFactory factory = new ConnectionFactory();
         	factory.setHost("localhost");
@@ -182,13 +159,10 @@ public class GameEngine extends Thread{
         	msg.setContent("inform-game-on");
         	
         	sendBulk(msg);
-        	//ticks +=1;
-        	//msg.msgNo +=1;
         	
         	msg.setHeader("inform-state");
         	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
         	msg.setContent(state_of_game.toString());
-        	//msg.setContent(stateOfGame);
         	
         	msg.ticks +=1;
         	msg.msgNo +=1;
@@ -201,61 +175,31 @@ public class GameEngine extends Thread{
         	
         	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
         	    String message = new String(delivery.getBody(), "UTF-8");
-        	    //ObjectMapper mapper = new ObjectMapper();
-        	    //Message messageobject = mapper.readValue(message, Message.class);
         	    System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
-        	    //System.out.println("Game engine Received: " + Util.fromJsonToJava(message, Message.class).toString());
-        	    //System.out.println("Game engine Received: " + messageobject.toString());
+
         	    if (Message.fromJSON(message).content.toString().contentEquals("pass")) {
-        	    //if (messageobject.content.toString().contentEquals("pass")) {
     				System.out.println("Player "+ Message.fromJSON(message).from + " decided to pass");
-        	    	//System.out.println("Player "+ messageobject.from + " decided to pass");
+
     			}
     			else {
-    	        	System.out.println("Player " + Message.fromJSON(message).from + " selected action " +  Message.fromJSON(message).content);
-    				//Action selectedAction = (Action) messageobject.content;
-    				//System.out.println("Player " + messageobject.from + " selected action " +  selectedAction.actionName);
+
     	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
     	        	updateStateOfGame(selectedAction);
-    	        	System.out.println("State of game updated with action " + selectedAction.actionName);
+    	        	updateScore(Message.fromJSON(message).from, selectedAction);
+
+    	        	System.out.println("Player " + Message.fromJSON(message).from + " new score is " + scoreMap.get(Message.fromJSON(message).from).toString());
     			}
         	};
         	
         	
-        	while (true) {
+        	while (!setOfActions.isEmpty()) {
         		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
-        		//System.out.println(feedback.getMessageCount());
+
         		if (feedback.getMessageCount() == playerMap.size()) {
 	        		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
-	//        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
-	//        		
-	//        		while (feedback.getMessageCount() < playerMap.size()) {
-	//        			System.out.println(feedback.getMessageCount());
-	//        			feedback = channel.queueDeclarePassive(queueName);
-	//        		}
-	//        		
-	//        		for (int i = 0; i < feedback.getMessageCount(); i++) {
-	//        			boolean autoAck = true;
-	//        			GetResponse response = channel.basicGet(queueName, autoAck);
-	//        			byte[] body = response.getBody();
-	//        			String message = new String(body);
-	//        			System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
-	//        			
-	//        			if (Message.fromJSON(message).content == "pass") {
-	//        				System.out.println("Player "+ Message.fromJSON(message).from + " decided to pass");
-	//        			}
-	//        			else {
-	//        	        	System.out.println("else branch Player " + Message.fromJSON(message).from + " selected action " +  Message.fromJSON(message).content);
-	//        	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
-	//        	        	updateStateOfGame(selectedAction);
-	//        	        	state_of_game = new Conjunction(stateOfGame);
-	//        	        	System.out.println("State of game updated");
-	//        			}
-	//        		}
-	        		
+	        		System.out.println(stateOfGame.toString() + " is state of game");
 		        	state_of_game = new Conjunction(stateOfGame);
 	            	msg.setContent(state_of_game.toString());
-	        		//msg.setContent(stateOfGame);
 	            	sendBulk(msg);
 	        	    msg.ticks += 1;
 	        	    msg.msgNo +=1;
@@ -265,6 +209,8 @@ public class GameEngine extends Thread{
         	}
     	}
     	catch (Exception e) {	
+    		System.out.println("Error: " + e.toString());
+    		
     	}
     }   
 

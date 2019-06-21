@@ -42,59 +42,15 @@ public class Player extends Thread{
     	String EXCHANGE_NAME = "cybergame_gameengine";
     	ConnectionFactory factory = new ConnectionFactory();
     	factory.setHost("localhost");
-    	
-    	//try (Connection connection = factory.newConnection();
-          //      Channel channel = connection.createChannel()) {
     		
-    		Connection connection = factory.newConnection();
-        	Channel channel = connection.createChannel();
-    		channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-    		channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
-    		//channel.basicPublish(EXCHANGE_NAME, "", null, Util.fromJavaToJson(msg).getBytes());
-    		//ObjectMapper mapper = new ObjectMapper();
-            //String jsonString = mapper.writeValueAsString(msg);
-            //channel.basicPublish(EXCHANGE_NAME, "", null, jsonString.getBytes("UTF-8"));
-        	System.out.println("Message is sent: " + msg.toString());
+		Connection connection = factory.newConnection();
+    	Channel channel = connection.createChannel();
+		channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+		channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
+
+    	System.out.println("Message is sent: " + msg.toString());
     	//}
     }
-    
-    
-//    private void receive(Message message) throws Exception {
-//    	Message msg = new Message();
-//    	msg.setFrom(this.playerName);
-//    	msg.setTo("gameEngine");
-//    	msg.setHeader("action");
-//    	String header = message.header;
-//    	String content = message.content;
-//    	int ticks = message.ticks;
-//    	
-//    	if (header == "inform-state") {
-//    		System.out.println(header);
-//    		if (ticks == msg.ticks) {
-//    			
-//            	PlParser parser = new PlParser();
-//            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(content);
-//        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-//				int actionSize = availableActions.size();
-//				List<Action> listactions = new ArrayList<Action>(availableActions);
-//				Random rand = new Random();
-//				int numChoice = rand.nextInt(actionSize); 
-//				Action action = listactions.get(numChoice);
-//				msg.setContent(action.actionName.getName());
-//				sendSingle(msg);
-//        	    msg.ticks += 1;
-//        	    msg.msgNo +=1;
-//    		}
-//    		else {
-//				msg.setContent("pass");
-//				sendSingle(msg);
-//        	    msg.ticks += 1;
-//        	    msg.msgNo +=1;
-//    		}
-//    	}
-//    	else {
-//    	} 	 	
-//    }
 
     
     private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
@@ -141,22 +97,17 @@ public class Player extends Thread{
         	
         	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
         	    String message = new String(delivery.getBody(), "UTF-8");
-        	    //ObjectMapper mapper = new ObjectMapper();
-        	    //Message messageobject = mapper.readValue(message, Message.class);
+
         	    System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-        	    //System.out.println(this.playerName + " Received: " + messageobject.toString());
+
         	    if (Message.fromJSON(message).header.toString().contentEquals("inform-game-on")) {
-        	    //if (messageobject.header.contentEquals("inform-game-on")) {
-    				System.out.println(this.playerName +": just an information, i do nothing");
+    				//System.out.println(this.playerName +": just an information, i do nothing");
 
     			}
     			else {
-    				System.out.println("In the situation where game content is not <<inform-game-on>>");
-    				System.out.println(String.format("Message ticks :%o, msg.ticks: %o", Message.fromJSON(message).ticks, msg.ticks));
+
     				if (Message.fromJSON(message).ticks != msg.ticks) {
-    				//if (messageobject.ticks != msg.ticks) {
-    					
-    					System.out.println("Ticks do not coincide, i decide to pass");
+
     					msg.setContent("pass");
     				}
     				else {
@@ -164,16 +115,14 @@ public class Player extends Thread{
     	            	PlParser parser = new PlParser();
     	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content.toString());
     	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
-    					//Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-    					//Set<PropositionalFormula> state_of_game =  (Set<PropositionalFormula>) messageobject.content;
-    					//Set<Action> availableActions = availableActions(setOfActions, state_of_game);
+    	        		
     					int actionSize = availableActions.size();
     					List<Action> listactions = new ArrayList<Action>(availableActions);
     					Random rand = new Random();
     					int numChoice = rand.nextInt(actionSize); 
     					Action action = listactions.get(numChoice);
     					msg.setContent(action.actionName.getName().toString());
-    					//msg.setContent(action);
+
     				}
     			}
         	    
@@ -181,63 +130,21 @@ public class Player extends Thread{
         	    sendSingle(msg);
         	    msg.ticks += 1;
         	    msg.msgNo +=1;
-//        	    	receive(Message.fromJSON(message));
+
         	    }
         	    catch (Exception e){
         	    }
         	};	
        	
-        	while (true) {
+        	while (!setOfActions.isEmpty()) {
+        		
         		
         		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
-//        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
-//        		System.out.println(feedback.toString());
-//        		
-//        		while (feedback.getMessageCount() < 1) {
-//        			wait(1000);
-//        			feedback = channel.queueDeclarePassive(queueName);
-//        		}
-//        		
-//        		for (int i = 0; i < feedback.getMessageCount(); i++) {
-//	        		boolean autoAck = true;
-//	    			GetResponse response = channel.basicGet(queueName, autoAck);
-//	    			byte[] body = response.getBody();
-//	    			String message = new String(body);
-//	    			System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-//	    			
-//	    			if (Message.fromJSON(message).header == "inform-game-on") {
-//	    				System.out.println("Just an information, i do nothing");
-//		        	    msg.ticks += 1;
-//		        	    msg.msgNo +=1;
-//	    			}
-//	    			else {
-//	    				if (Message.fromJSON(message).ticks != msg.ticks) {
-//	    					System.out.println("Ticks do not coincide, i decide to pass");
-//	    					msg.setContent("pass");
-//	    					sendSingle(msg);
-//	    	        	    msg.ticks += 1;
-//	    	        	    msg.msgNo +=1;
-//	    				}
-//	    				else {
-//	    	            	PlParser parser = new PlParser();
-//	    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content);
-//	    	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getPredicates());
-//	    					int actionSize = availableActions.size();
-//	    					List<Action> listactions = new ArrayList<Action>(availableActions);
-//	    					Random rand = new Random();
-//	    					int numChoice = rand.nextInt(actionSize); 
-//	    					Action action = listactions.get(numChoice);
-//	    					msg.setContent(action.actionName.getName());
-//	    					sendSingle(msg);
-//	    	        	    msg.ticks += 1;
-//	    	        	    msg.msgNo +=1;
-//	    				}
-//	    			}
-//        		}
 
         	}
     	}
     	catch (Exception e) {	
+    		System.out.println("Error: " + e.toString());
     	}
     }
 
