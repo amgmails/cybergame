@@ -78,13 +78,25 @@ public class App {
         for (int k=0; k<1; k++){
         	String playerName = "agent_" + Integer.toString(k);
         	playerMap.put(playerName, new Player(setOfActions, playerName));
-        	playerMap.get(playerName).start();
+        	//playerMap.get(playerName).start();
         	playerMap.get(playerName).setName(playerName);
         }
         
-        GameEngine gameEngine = new GameEngine(playerMap, "gameengine");
-        gameEngine.start();
-        gameEngine.setName("gameengine");
+        Map<String, GameEngine> geMap = new HashMap<String, GameEngine>();
+        geMap.put("gameengine", new GameEngine("gameengine"));
+//        GameEngine gameEngine = new GameEngine(playerMap, "gameengine");
+        //gameEngine.start();
+        //gameEngine.setName("gameengine");
+        
+        for (String playerName:playerMap.keySet()) {
+        	playerMap.get(playerName).geMap = geMap;
+        	playerMap.get(playerName).start();
+        }
+        
+        for (String geName:geMap.keySet()) {
+        	geMap.get(geName).playerMap = playerMap;
+        	geMap.get(geName).start();
+        }
 		
 	}
 }
