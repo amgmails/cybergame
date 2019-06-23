@@ -7,16 +7,21 @@ import java.util.Set;
 
 //import org.codehaus.jackson.map.ObjectMapper;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
+//import com.rabbitmq.client.Channel;
+//import com.rabbitmq.client.Connection;
+//import com.rabbitmq.client.ConnectionFactory;
+//import com.rabbitmq.client.DeliverCallback;
 //import com.rabbitmq.client.GetResponse;
 //import com.rabbitmq.client.AMQP.Queue;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
 //import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
+
+import javax.jms.*;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import java.util.Properties;
 
 
 /**
@@ -36,23 +41,7 @@ public class Player extends Thread{
 		this.setOfActions = setOfActions;
 	}
 	
-	
-    private void sendSingle(Message msg) throws Exception {
-    	
-    	String EXCHANGE_NAME = "cybergame_gameengine";
-    	ConnectionFactory factory = new ConnectionFactory();
-    	factory.setHost("localhost");
-    		
-		Connection connection = factory.newConnection();
-    	Channel channel = connection.createChannel();
-		channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-		channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes());
-
-    	System.out.println("Message is sent: " + msg.toString());
-    	//}
-    }
-
-    
+  
     private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
 		//Set<Action> results = new HashSet<Action>();
 		
@@ -77,43 +66,47 @@ public class Player extends Thread{
     	
     	try {
 
-        	String EXCHANGE_NAME = "cybergame_players";
-        	ConnectionFactory factory = new ConnectionFactory();
-        	factory.setHost("localhost");
-        	Connection connection = factory.newConnection();
-        	Channel channel = connection.createChannel();
-        	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-        	String queueName = channel.queueDeclare().getQueue();
-        	channel.queueBind(queueName, EXCHANGE_NAME, "");
-        	System.out.println(this.playerName + ": "+ "Waiting for the messages.........on queue " + queueName);
+        	System.out.println(this.playerName + ": "+ "Waiting for the messages.........");
         	
-        	Message msg = new Message();
-        	msg.setFrom(this.playerName);
-        	msg.setTo("gameEngine");
-        	msg.setHeader("action");
-        	msg.setContent("pass");
-        	msg.ticks =0;
-        	msg.msgNo =0;
+            Properties properties = new Properties();
+            properties.load(this.getClass().getResourceAsStream("hello.properties"));
+            Context context = new InitialContext(properties);
+            ConnectionFactory connectionFactory = (ConnectionFactory) context.lookup("qpidConnectionFactory");
+            Connection connection = connectionFactory.createConnection();
+            connection.start();
+            Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
         	
-        	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-        	    String message = new String(delivery.getBody(), "UTF-8");
-
-        	    System.out.println(this.playerName + " Received: " + Message.fromJSON(message).toString());
-
-        	    if (Message.fromJSON(message).header.toString().contentEquals("inform-game-on")) {
-    				//System.out.println(this.playerName +": just an information, i do nothing");
-
+            Topic players = (Topic) context.lookup("players");
+            MessageConsumer subscriber = session.createDurableSubscriber(players, this.playerName);
+            
+            Queue ge = (Queue) context.lookup("gameengine");
+            MessageProducer messageProducer = session.createProducer(ge);
+            
+            Message msg = session.createMessage();
+            msg.setIntProperty("msgNo", 0);
+            msg.setIntProperty("ticks", 0);
+            msg.setStringProperty("header", "action");
+            msg.setStringProperty("content", "pass");
+            msg.setStringProperty("from", this.playerName);	
+       	
+        	while (!setOfActions.isEmpty()) {
+        		
+    			Message message = subscriber.receive(1000);
+    			session.commit();
+    			System.out.println(this.playerName +" Received from " + message.getStringProperty("from") + " message: " + message.toString());
+    			
+    			if (message.getStringProperty("header").contentEquals("inform-game-on")) {
+    				System.out.println(this.playerName +": just an information, i do nothing");
     			}
     			else {
 
-    				if (Message.fromJSON(message).ticks != msg.ticks) {
-
-    					msg.setContent("pass");
+    				if (message.getIntProperty("ticks") != msg.getIntProperty("ticks")) {
+    					msg.setStringProperty("content", "pass");
     				}
     				else {
-    					System.out.println("In the situation where game content is not <<inform-game-on>> and ticks coincide");
+    					//System.out.println("In the situation where game content is not <<inform-game-on>> and ticks coincide");
     	            	PlParser parser = new PlParser();
-    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(Message.fromJSON(message).content.toString());
+    	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(message.getStringProperty("content"));
     	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
     	        		
     					int actionSize = availableActions.size();
@@ -121,25 +114,16 @@ public class Player extends Thread{
     					Random rand = new Random();
     					int numChoice = rand.nextInt(actionSize); 
     					Action action = listactions.get(numChoice);
-    					msg.setContent(action.actionName.getName().toString());
+    					msg.setStringProperty("content", action.actionName.getName().toString());
 
     				}
     			}
-        	    
-        	    try {
-        	    sendSingle(msg);
-        	    msg.ticks += 1;
-        	    msg.msgNo +=1;
-
-        	    }
-        	    catch (Exception e){
-        	    }
-        	};	
-       	
-        	while (!setOfActions.isEmpty()) {
-        		
-        		
-        		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+    			
+                messageProducer.send(msg);
+                session.commit();
+                System.out.println(this.playerName + " sent message: " + msg.toString());
+                msg.setIntProperty("msgNo", msg.getIntProperty("msgNo") + 1);
+                msg.setIntProperty("ticks", msg.getIntProperty("ticks") + 1);
 
         	}
     	}

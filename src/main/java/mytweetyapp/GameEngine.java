@@ -1,19 +1,25 @@
 package mytweetyapp;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.rabbitmq.client.AMQP.Queue;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
+//import com.rabbitmq.client.AMQP.Queue;
+//import com.rabbitmq.client.Channel;
+//import com.rabbitmq.client.Connection;
+//import com.rabbitmq.client.ConnectionFactory;
+//import com.rabbitmq.client.DeliverCallback;
 //import com.rabbitmq.client.GetResponse;
 
 import net.sf.tweety.logics.pl.syntax.Proposition;
 import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
+
+import javax.jms.*;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import java.util.Properties;
 
 //import org.codehaus.jackson.map.ObjectMapper;
 
@@ -27,6 +33,8 @@ public class GameEngine extends Thread{
 	
 	String engineName;
 	Map<String, Player> playerMap;
+	
+	Properties properties = new Properties();
 	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
@@ -116,24 +124,7 @@ public class GameEngine extends Thread{
 		this.engineName = engineName;
 		this.playerMap = playerMap;
 	}
-	
-   
-    private void sendBulk(Message msg) throws Exception {
-
-        String EXCHANGE_NAME = "cybergame_players";
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-            
-    	Connection connection = factory.newConnection();
-    	Channel channel = connection.createChannel();
-    
-        channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-        channel.basicPublish(EXCHANGE_NAME, "", null, msg.toJSON().getBytes("UTF-8"));
-        System.out.println("Message is sent: " + msg.toString());
-        
-    }
-
-    
+	    
     @Override
     public void run() {
     	
@@ -142,74 +133,84 @@ public class GameEngine extends Thread{
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
     		initialiseScores();
-        	String EXCHANGE_NAME = "cybergame_gameengine";
-        	ConnectionFactory factory = new ConnectionFactory();
-        	factory.setHost("localhost");
-        	Connection connection = factory.newConnection();
-        	Channel channel = connection.createChannel();
-        	channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-        	String queueName = channel.queueDeclare().getQueue();
-        	channel.queueBind(queueName, EXCHANGE_NAME, "");
-        	System.out.println("Game engine Waiting for the messages.........on queue " + queueName);
+        	System.out.println("Game engine Waiting for the messages.........");
+
+            Properties properties = new Properties();
+            properties.load(this.getClass().getResourceAsStream("hello.properties"));
+            Context context = new InitialContext(properties);
+            System.out.println("context done");
+            ConnectionFactory connectionFactory = (ConnectionFactory) context.lookup("qpidConnectionFactory");
+            Connection connection = connectionFactory.createConnection();
+            connection.start();
+            Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
+            System.out.println("session created without problems");
+            
+            Topic players = (Topic) context.lookup("players");
+            MessageProducer messageProducer = session.createProducer(players);
+            System.out.println("game engine messageproducer created without problems");
+            
+            Queue ge = (Queue) context.lookup("gameengine");
+            MessageConsumer messageConsumer = session.createConsumer(ge);
+            System.out.println("game engine messageconsumer created without problems");
         	
-        	Message msg = new Message();
-        	msg.setFrom("gameEngine");
-        	msg.setTo("players");
-        	msg.setHeader("inform-game-on");
-        	msg.setContent("inform-game-on");
-        	
-        	sendBulk(msg);
-        	
-        	msg.setHeader("inform-state");
+            Message msg = session.createMessage();
+            msg.setIntProperty("msgNo", 0);
+            msg.setIntProperty("ticks", 0);
+            msg.setStringProperty("header", "inform-game-on");
+            msg.setStringProperty("content", "inform-game-on");
+            msg.setStringProperty("from", "gameengine");
+            
+            messageProducer.send(msg);
+            session.commit();
+            System.out.println(this.engineName + " sent message: " + msg.toString());
+            msg.setIntProperty("msgNo", msg.getIntProperty("msgNo") + 1);
+            msg.setIntProperty("ticks", msg.getIntProperty("ticks") + 1);
+        	       	
+        	msg.setStringProperty("header", "inform-state");
         	PropositionalFormula state_of_game = new Conjunction(stateOfGame);
-        	msg.setContent(state_of_game.toString());
+        	msg.setStringProperty("content", state_of_game.toString());
         	
-        	msg.ticks +=1;
-        	msg.msgNo +=1;
-        	
-        	sendBulk(msg);
-        	
-        	msg.ticks +=1;
-        	msg.msgNo +=1;
-        	
-        	
-        	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-        	    String message = new String(delivery.getBody(), "UTF-8");
-        	    System.out.println("Game engine Received: " + Message.fromJSON(message).toString());
-
-        	    if (Message.fromJSON(message).content.toString().contentEquals("pass")) {
-    				System.out.println("Player "+ Message.fromJSON(message).from + " decided to pass");
-
-    			}
-    			else {
-
-    	        	Action selectedAction = actionMap.get(Message.fromJSON(message).content);
-    	        	updateStateOfGame(selectedAction);
-    	        	updateScore(Message.fromJSON(message).from, selectedAction);
-
-    	        	System.out.println("Player " + Message.fromJSON(message).from + " new score is " + scoreMap.get(Message.fromJSON(message).from).toString());
-    			}
-        	};
+            messageProducer.send(msg);
+            session.commit();
+            System.out.println(this.engineName + " sent message: " + msg.toString());
+            msg.setIntProperty("msgNo", msg.getIntProperty("msgNo") + 1);
+            msg.setIntProperty("ticks", msg.getIntProperty("ticks") + 1);
         	
         	
         	while (!setOfActions.isEmpty()) {
-        		Queue.DeclareOk feedback = channel.queueDeclarePassive(queueName);
+        		
+        		for (int i = 0; i < playerMap.size(); i++) {
+        			Message message = messageConsumer.receive(1000);
+        			session.commit();
+        			System.out.println(this.engineName +" Received from " + message.getStringProperty("from") + " message: " + message.toString());
+        			
+        			if (message.getStringProperty("content").contentEquals("pass")) {
+        				System.out.println("Player "+ message.getStringProperty("from") + " decided to pass");
+        			}
+        			else {
+        	        	Action selectedAction = actionMap.get(message.getStringProperty("content"));
+        	        	updateStateOfGame(selectedAction);
+        	        	updateScore(message.getStringProperty("from"), selectedAction);
 
-        		if (feedback.getMessageCount() == playerMap.size()) {
-	        		channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
-	        		System.out.println(stateOfGame.toString() + " is state of game");
-		        	state_of_game = new Conjunction(stateOfGame);
-	            	msg.setContent(state_of_game.toString());
-	            	sendBulk(msg);
-	        	    msg.ticks += 1;
-	        	    msg.msgNo +=1;
-        	    
+        	        	System.out.println("Player " + message.getStringProperty("from") + " new score is " + scoreMap.get(message.getStringProperty("from")).toString());
+        			}
         		}
+        		
+        		System.out.println(stateOfGame.toString() + " is state of game");
+	        	state_of_game = new Conjunction(stateOfGame);
+	        	msg.setStringProperty("content", state_of_game.toString());
+	        	
+	            messageProducer.send(msg);
+	            session.commit();
+	            System.out.println(this.engineName + " sent message: " + msg.toString());
+	            msg.setIntProperty("msgNo", msg.getIntProperty("msgNo") + 1);
+	            msg.setIntProperty("ticks", msg.getIntProperty("ticks") + 1);
         		
         	}
     	}
-    	catch (Exception e) {	
-    		System.out.println("Error: " + e.toString());
+    	catch (Exception e) {
+    		e.printStackTrace();
+    		//System.out.println("Error: " + e.toString());
     		
     	}
     }   
