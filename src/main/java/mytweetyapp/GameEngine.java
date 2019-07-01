@@ -26,52 +26,113 @@ public class GameEngine extends Thread{
 	public static PropositionalFormula top = new Proposition("top");
 	public static PropositionalFormula bottom = new Proposition("bottom");
 	
-	public static PropositionalFormula reportNotWritten = new Proposition("reportNotWritten");
-	public static PropositionalFormula reportWritten = new Proposition("reportWritten");
+	public static PropositionalFormula descriptionsNOK = new Proposition("descriptionsNOK");
+	public static PropositionalFormula descriptionsOK = new Proposition("descriptionsOK");
 	
-	public static PropositionalFormula excelSheetNotDone = new Proposition("excelSheetNotDone");
-	public static PropositionalFormula excelSheetDone = new Proposition("excelSheetDone");
+	public static PropositionalFormula speccharactersNOK = new Proposition("speccharactersNOK");
+	public static PropositionalFormula speccharactersOK = new Proposition("speccharactersOK");
 	
-	public static PropositionalFormula sensitiveFolderNotTreated = new Proposition("sensitiveFolderNotTreated");
-	public static PropositionalFormula sensitiveFolderTreated = new Proposition("sensitiveFolderTreated");
-
-	public static PropositionalFormula ANotDone = new Proposition("ANotDone");
-	public static PropositionalFormula ADone = new Proposition("ADone");
+	public static PropositionalFormula advertisementNOK = new Proposition("advertisementNOK");
+	public static PropositionalFormula advertisementOK = new Proposition("advertisementOK");
 	
-	public static PropositionalFormula BNotDone = new Proposition("BNotDone");
-	public static PropositionalFormula BDone = new Proposition("BDone");
+	public static PropositionalFormula securecredentialsNOK = new Proposition("securecredentialsNOK");
+	public static PropositionalFormula securecredentialsOK = new Proposition("securecredentialsOK");
 	
-	public static PropositionalFormula CNotDone = new Proposition("CNotDone");
-	public static PropositionalFormula CDone = new Proposition("CDone");
+	public static PropositionalFormula buildawarenessNOK = new Proposition("buildawarenessNOK");
+	public static PropositionalFormula buildawarenessOK = new Proposition("buildawarenessOK");
 	
-	public static Action reportWriting = new Action(new Proposition("reportWriting"), 20, 8, reportNotWritten, reportWritten);
-	public static Action excelWork = new Action(new Proposition("excelWork"), 10, 6, excelSheetNotDone, excelSheetDone);
-	public static Action treatSensitiveFolder = new Action(new Proposition("treatSensitiveFolder"), 13, 4, sensitiveFolderNotTreated, sensitiveFolderTreated);
-	public static Action A = new Action(new Proposition("A"), 25, 15, ANotDone, ADone);
-	public static Action B = new Action(new Proposition("B"), 19, 10, BNotDone, BDone);
-	public static Action C = new Action(new Proposition("C"), 8, 1, CNotDone, CDone);
+	public static PropositionalFormula resolvecomplaintsNOK = new Proposition("resolvecomplaintsNOK");
+	public static PropositionalFormula resolvecomplaintsOK = new Proposition("resolvecomplaintsOK");
 	
+	public static PropositionalFormula backupwebsiteNOK = new Proposition("backupwebsiteNOK");
+	public static PropositionalFormula backupwebsiteOK = new Proposition("backupwebsiteOK");
+	
+	public static PropositionalFormula fixerrorsNOK = new Proposition("fixerrorsNOK");
+	public static PropositionalFormula fixerrorsOK = new Proposition("fixerrorsOK");
+	
+	public static PropositionalFormula improvedesignNOK = new Proposition("improvedesignNOK");
+	public static PropositionalFormula improvedesignOK = new Proposition("improvedesignOK");
+	
+	public static PropositionalFormula backupdatabaseNOK = new Proposition("backupdatabaseNOK");
+	public static PropositionalFormula backupdatabaseOK = new Proposition("backupdatabaseOK");
+	
+	public static PropositionalFormula encryptcredentialsNOK = new Proposition("encryptcredentialsNOK");
+	public static PropositionalFormula encryptcredentialsOK = new Proposition("encryptcredentialsOK");
+	
+	public static PropositionalFormula improveperformanceNOK = new Proposition("improveperformanceNOK");
+	public static PropositionalFormula improveperformanceOK = new Proposition("improveperformanceOK");
+	
+	public static Action descriptions = new Action(new Proposition("descriptions"), descriptionsNOK, descriptionsOK, "marketing", "marketing", 18, 12, 5);
+	public static Action speccharacters = new Action(new Proposition("speccharacters"), speccharactersNOK, speccharactersOK, "marketing", "", 18, 18, 5);
+	public static Action advertisement = new Action(new Proposition("advertisement"), advertisementNOK, advertisementOK, "marketing", "", 18, 18, 5);
+	public static Action securecredentials = new Action(new Proposition("securecredentials"), securecredentialsNOK, securecredentialsOK, "marketing", "", 18, 18, 5);
+	public static Action buildawareness = new Action(new Proposition("buildawareness"), buildawarenessNOK, buildawarenessOK, "marketing", "", 18, 18, 5);
+	public static Action resolvecomplaints = new Action(new Proposition("resolvecomplaints"), resolvecomplaintsNOK, resolvecomplaintsOK, "marketing", "", 18, 18, 5);
+	public static Action backupwebsite = new Action(new Proposition("backupwebsite"), backupwebsiteNOK, backupwebsiteOK, "technical", "", 18, 18, 5);
+	public static Action fixerrors = new Action(new Proposition("fixerrors"), fixerrorsNOK, fixerrorsOK, "technical", "", 18, 18, 5);
+	public static Action improvedesign = new Action(new Proposition("improvedesign"), improvedesignNOK, improvedesignOK, "technical", "", 18, 18, 5);
+	public static Action backupdatabase = new Action(new Proposition("backupdatabase"), backupdatabaseNOK, backupdatabaseOK, "technical", "", 18, 18, 5);
+	public static Action encryptcredentials = new Action(new Proposition("encryptcredentials"), encryptcredentialsNOK, encryptcredentialsOK, "technical", "", 18, 18, 5);
+	public static Action improveperformance = new Action(new Proposition("improveperformance"), improveperformanceNOK, improveperformanceOK, "technical", "", 18, 18, 5);
 	
 	public static Set<Action> setOfActions = new HashSet<Action>();
+	
+	private static void initialiseSetOfActions() {
+		setOfActions.add(descriptions);
+		setOfActions.add(speccharacters);
+		setOfActions.add(advertisement);
+		setOfActions.add(securecredentials);
+		setOfActions.add(buildawareness);
+		setOfActions.add(resolvecomplaints);
+		setOfActions.add(backupwebsite);
+		setOfActions.add(fixerrors);
+		setOfActions.add(improvedesign);
+		setOfActions.add(backupdatabase);
+		setOfActions.add(encryptcredentials);
+		setOfActions.add(improveperformance);
+	}
+
+	
+	public static Policy obligedToRemoveSpecialCharacters = new Policy(new Modality("Obliged"), speccharacters, speccharactersNOK, speccharactersOK, 0, 1);
+	public static Policy obligedToSecureCredentials = new Policy(new Modality("Obliged"), securecredentials, securecredentialsNOK, securecredentialsOK, 0, 1);
+	public static Policy obligedToBackupWebsite = new Policy(new Modality("Obliged"), backupwebsite, backupwebsiteNOK, backupwebsiteOK, 0, 1);
+	public static Policy obligedToFixErrors = new Policy(new Modality("Obliged"), fixerrors, fixerrorsNOK, fixerrorsOK, 0, 1);
+	public static Policy obligedToBackupDatabase = new Policy(new Modality("Obliged"), backupdatabase, backupdatabaseNOK, backupdatabaseOK, 0, 1);
+	public static Policy obligedToEncryptCredentials = new Policy(new Modality("Obliged"), encryptcredentials, encryptcredentialsNOK, encryptcredentialsOK, 0, 1);
+	
+	public static Set<Policy> setOfPolicies = new HashSet<Policy>();
+	
+	private static void initialiseSetOfPolicies() {
+		setOfPolicies.add(obligedToRemoveSpecialCharacters);
+		setOfPolicies.add(obligedToSecureCredentials);
+		setOfPolicies.add(obligedToBackupWebsite);
+		setOfPolicies.add(obligedToFixErrors);
+		setOfPolicies.add(obligedToBackupDatabase);
+		setOfPolicies.add(obligedToEncryptCredentials);
+		
+	}
+	
+	
+//	public static Set<Action> setOfActions = new HashSet<Action>();
 	
 	public static Map<String, Action> actionMap = new HashMap<String, Action>();
 	public static Map<String, Integer> scoreMap = new HashMap<String, Integer>();
 	
-	private void initialiseSetOfActions() {
-		setOfActions.add(reportWriting);
-		setOfActions.add(excelWork);
-		setOfActions.add(treatSensitiveFolder);
-		setOfActions.add(A);
-		setOfActions.add(B);
-		setOfActions.add(C);
-		
-		actionMap.put(reportWriting.actionName.getName(), reportWriting);
-		actionMap.put(excelWork.actionName.getName(), excelWork);
-		actionMap.put(treatSensitiveFolder.actionName.getName(), treatSensitiveFolder);
-		actionMap.put(A.actionName.getName(), A);
-		actionMap.put(B.actionName.getName(), B);
-		actionMap.put(C.actionName.getName(), C);
-	}
+//	private void initialiseSetOfActions() {
+//		setOfActions.add(reportWriting);
+//		setOfActions.add(excelWork);
+//		setOfActions.add(treatSensitiveFolder);
+//		setOfActions.add(A);
+//		setOfActions.add(B);
+//		setOfActions.add(C);
+//		
+//		actionMap.put(reportWriting.actionName.getName(), reportWriting);
+//		actionMap.put(excelWork.actionName.getName(), excelWork);
+//		actionMap.put(treatSensitiveFolder.actionName.getName(), treatSensitiveFolder);
+//		actionMap.put(A.actionName.getName(), A);
+//		actionMap.put(B.actionName.getName(), B);
+//		actionMap.put(C.actionName.getName(), C);
+//	}
 	
 	private void initialiseScores() {
 		
@@ -81,13 +142,13 @@ public class GameEngine extends Thread{
 
 	}
 	
-	public Policy obligedToTreatSensitiveFolder = new Policy(new Modality("Obliged"), treatSensitiveFolder, sensitiveFolderNotTreated, sensitiveFolderTreated);
+//	public Policy obligedToTreatSensitiveFolder = new Policy(new Modality("Obliged"), treatSensitiveFolder, sensitiveFolderNotTreated, sensitiveFolderTreated);
+//	
+//	public Set<Policy> setOfPolicies = new HashSet<Policy>();
 	
-	public Set<Policy> setOfPolicies = new HashSet<Policy>();
-	
-	private void initialiseSetOfPolicies() {
-		setOfPolicies.add(obligedToTreatSensitiveFolder);
-	}
+//	private void initialiseSetOfPolicies() {
+//		setOfPolicies.add(obligedToTreatSensitiveFolder);
+//	}
 		
 	public Set<PropositionalFormula> stateOfGame = new HashSet<PropositionalFormula>();
 	
@@ -101,7 +162,7 @@ public class GameEngine extends Thread{
 	
 	public void updateScore(String playerName, Action action) {
 		int oldValue = scoreMap.get(playerName);
-		scoreMap.replace(playerName, oldValue + action.benefit - action.cost);
+		scoreMap.replace(playerName, oldValue + action.utility1 - action.cost);
 	}
 	
 	public GameEngine(/*Map<String, Player> playerMap,*/ String engineName) {
@@ -153,7 +214,7 @@ public class GameEngine extends Thread{
         	
         	
         	while (!setOfActions.isEmpty()) {
-        		sleep(20);
+        		//sleep(20);
         		
         		while (this.messageQueue.size() < playerMap.size()) {
         			wait(5);
@@ -195,7 +256,7 @@ public class GameEngine extends Thread{
 	            //msg.ticks += 1;
 	            this.ticks +=1;
 	            
-	            sleep(1000);
+	            wait(1000);
         	}
     	}
     	catch (Exception e) {

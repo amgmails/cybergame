@@ -1,6 +1,7 @@
 package mytweetyapp;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -21,6 +22,7 @@ import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 public class Player extends Thread{
 	
 	Set<Action> setOfActions;
+	Set<Policy> setOfPolicies;
 	String playerName;
 	public Map<String, GameEngine> geMap;
 	private int ticks = 0;
@@ -28,11 +30,98 @@ public class Player extends Thread{
 	public Vector<Message> messageQueue = new Vector<Message>();
 	
 	
-	public Player(Set<Action> setOfActions, String playerName) {
+	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName) {
 		this.playerName = playerName;
 		this.setOfActions = setOfActions;
+		this.setOfPolicies = setOfPolicies;
 	}
 	
+	private Set<Policy> getActivePolicies(Set<Policy> setOfPolicies, Set<PropositionalFormula> stateOfGame) {
+		Set<Policy> activePolicies = new HashSet<Policy>();
+		for (Policy policy:setOfPolicies) {
+			if (policy.isActive(stateOfGame)) {
+				activePolicies.add(policy);
+			}
+		}
+		
+		return activePolicies;
+	}
+	
+	private boolean doesActionFulfillPolicy(Action action, Policy policy) {
+		if (policy.modality.modality.contentEquals("P")) {
+			return true;
+		}
+		else {
+			if (!(action.equals(policy.actionName))) {
+				return false;
+			}
+			else {
+				if (policy.modality.modality.contentEquals("O")) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+		}
+	}
+	
+	private boolean doesActionViolatePolicy(Action action, Policy policy) {
+		if (policy.modality.modality.contentEquals("P")) {
+			return false;
+		}
+		else {
+			if (!(action.equals(policy.actionName))) {
+				return false;
+			}
+			else {
+				if (policy.modality.modality.contentEquals("O")) {
+					return false;
+				}
+				else {
+					return true;
+				}
+			}
+		}
+	}
+	
+	private Set<Policy> fulfilledPolicies (Action action, Set<Policy> setOfPolicies) {
+		Set<Policy> result = new HashSet<Policy>();
+		for (Policy policy:setOfPolicies) {
+			if (doesActionFulfillPolicy(action, policy)) {
+				result.add(policy);
+			}
+		}
+		return result;
+	}
+	
+	private Set<Policy> violatedPolicies (Action action, Set<Policy> SetOfPolicies) {
+		Set<Policy> result = new HashSet<Policy>();
+		for (Policy policy:SetOfPolicies) {
+			if (doesActionViolatePolicy(action, policy)) {
+				result.add(policy);
+			}
+		}
+		return result;
+	}
+	
+	private int utility(Action action, Set<PropositionalFormula> stateOfGame) {
+		int utility = action.utility1 - action.cost;
+		
+		Set<Policy> activePolicies = getActivePolicies(setOfPolicies, stateOfGame);
+		Set<Policy> fulfilledPolicies = fulfilledPolicies(action, activePolicies);
+		Set<Policy> violatedPolicies = violatedPolicies(action, activePolicies);
+		
+		for (Policy  policy:fulfilledPolicies) {
+			utility += policy.reward;
+		}
+		
+		for (Policy  policy:violatedPolicies) {
+			utility -= policy.punishment;
+		}
+		
+		return utility;
+	}
   
     private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
 		//Set<Action> results = new HashSet<Action>();
