@@ -48,18 +48,18 @@ public class App {
 	public static PropositionalFormula improveperformanceNOK = new Proposition("improveperformanceNOK");
 	public static PropositionalFormula improveperformanceOK = new Proposition("improveperformanceOK");
 	
-	public static Action descriptions = new Action(new Proposition("descriptions"), descriptionsNOK, descriptionsOK, "marketing", "marketing", 18, 12, 5);
-	public static Action speccharacters = new Action(new Proposition("speccharacters"), speccharactersNOK, speccharactersOK, "marketing", "", 18, 18, 5);
-	public static Action advertisement = new Action(new Proposition("advertisement"), advertisementNOK, advertisementOK, "marketing", "", 18, 18, 5);
-	public static Action securecredentials = new Action(new Proposition("securecredentials"), securecredentialsNOK, securecredentialsOK, "marketing", "", 18, 18, 5);
-	public static Action buildawareness = new Action(new Proposition("buildawareness"), buildawarenessNOK, buildawarenessOK, "marketing", "", 18, 18, 5);
-	public static Action resolvecomplaints = new Action(new Proposition("resolvecomplaints"), resolvecomplaintsNOK, resolvecomplaintsOK, "marketing", "", 18, 18, 5);
-	public static Action backupwebsite = new Action(new Proposition("backupwebsite"), backupwebsiteNOK, backupwebsiteOK, "technical", "", 18, 18, 5);
-	public static Action fixerrors = new Action(new Proposition("fixerrors"), fixerrorsNOK, fixerrorsOK, "technical", "", 18, 18, 5);
-	public static Action improvedesign = new Action(new Proposition("improvedesign"), improvedesignNOK, improvedesignOK, "technical", "", 18, 18, 5);
-	public static Action backupdatabase = new Action(new Proposition("backupdatabase"), backupdatabaseNOK, backupdatabaseOK, "technical", "", 18, 18, 5);
-	public static Action encryptcredentials = new Action(new Proposition("encryptcredentials"), encryptcredentialsNOK, encryptcredentialsOK, "technical", "", 18, 18, 5);
-	public static Action improveperformance = new Action(new Proposition("improveperformance"), improveperformanceNOK, improveperformanceOK, "technical", "", 18, 18, 5);
+	public static Action descriptions = new Action(new Proposition("descriptions"), new HashSet<PropositionalFormula>(Arrays.asList(descriptionsNOK)) , new HashSet<PropositionalFormula>(Arrays.asList(descriptionsOK)), "marketing", "marketing", 18, 12, 5, 10);
+	public static Action speccharacters = new Action(new Proposition("speccharacters"), new HashSet<PropositionalFormula>(Arrays.asList(speccharactersNOK)), new HashSet<PropositionalFormula>(Arrays.asList(speccharactersOK)), "marketing", "", 18, 18, 5, 9);
+	public static Action advertisement = new Action(new Proposition("advertisement"), new HashSet<PropositionalFormula>(Arrays.asList(advertisementNOK)), new HashSet<PropositionalFormula>(Arrays.asList(advertisementOK)), "marketing", "", 18, 18, 5, 8);
+	public static Action securecredentials = new Action(new Proposition("securecredentials"), new HashSet<PropositionalFormula>(Arrays.asList(securecredentialsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(securecredentialsOK)), "marketing", "", 18, 18, 5, 10);
+	public static Action buildawareness = new Action(new Proposition("buildawareness"), new HashSet<PropositionalFormula>(Arrays.asList(buildawarenessNOK)), new HashSet<PropositionalFormula>(Arrays.asList(buildawarenessOK)), "marketing", "", 18, 18, 5, 9);
+	public static Action resolvecomplaints = new Action(new Proposition("resolvecomplaints"), new HashSet<PropositionalFormula>(Arrays.asList(resolvecomplaintsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(resolvecomplaintsOK)), "marketing", "", 18, 18, 5, 8);
+	public static Action backupwebsite = new Action(new Proposition("backupwebsite"), new HashSet<PropositionalFormula>(Arrays.asList(backupwebsiteNOK)), new HashSet<PropositionalFormula>(Arrays.asList(backupwebsiteOK)), "technical", "", 18, 18, 5, 7);
+	public static Action fixerrors = new Action(new Proposition("fixerrors"), new HashSet<PropositionalFormula>(Arrays.asList(fixerrorsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(fixerrorsOK)), "technical", "", 18, 18, 5, 6);
+	public static Action improvedesign = new Action(new Proposition("improvedesign"), new HashSet<PropositionalFormula>(Arrays.asList(improvedesignNOK)), new HashSet<PropositionalFormula>(Arrays.asList(improvedesignOK)), "technical", "", 18, 18, 5, 10);
+	public static Action backupdatabase = new Action(new Proposition("backupdatabase"), new HashSet<PropositionalFormula>(Arrays.asList(backupdatabaseNOK)), new HashSet<PropositionalFormula>(Arrays.asList(backupdatabaseOK)), "technical", "", 18, 18, 5, 9);
+	public static Action encryptcredentials = new Action(new Proposition("encryptcredentials"), new HashSet<PropositionalFormula>(Arrays.asList(encryptcredentialsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(encryptcredentialsOK)), "technical", "", 18, 18, 5, 8);
+	public static Action improveperformance = new Action(new Proposition("improveperformance"), new HashSet<PropositionalFormula>(Arrays.asList(improveperformanceNOK)), new HashSet<PropositionalFormula>(Arrays.asList(improveperformanceOK)), "technical", "", 18, 18, 5, 7);
 	
 	public static Set<Action> setOfActions = new HashSet<Action>();
 	
@@ -102,6 +102,42 @@ public class App {
 	
 	private static void initialiseStateOfGame() {
 		stateOfGame.add(start);
+		stateOfGame.add(advertisementNOK);
+		stateOfGame.add(backupdatabaseNOK);
+		stateOfGame.add(backupwebsiteNOK);
+		stateOfGame.add(buildawarenessNOK);
+		stateOfGame.add(descriptionsNOK);
+		stateOfGame.add(encryptcredentialsNOK);
+		stateOfGame.add(fixerrorsNOK);
+		stateOfGame.add(improvedesignNOK);
+		stateOfGame.add(improveperformanceNOK);
+		stateOfGame.add(resolvecomplaintsNOK);
+		stateOfGame.add(securecredentialsNOK);
+		stateOfGame.add(speccharactersNOK);
+	}
+	
+	public static Map<String, Set<Action>> roleActionsMap = new HashMap<String, Set<Action>>();
+	
+	private static void initialiseRoleActionsMap() {
+		for (Action action:setOfActions) {
+			if (!action.role1.contentEquals("")) {
+				try {
+					roleActionsMap.get(action.role1).add(action);
+				}
+				catch (Exception e) {
+					roleActionsMap.put(action.role1, new HashSet<Action>());
+				}
+			}
+			
+			if (!action.role2.contentEquals("")) {
+				try {
+					roleActionsMap.get(action.role2).add(action);
+				}
+				catch (Exception e) {
+					roleActionsMap.put(action.role2, new HashSet<Action>());
+				}
+			}
+		}
 	}
 	
 	
@@ -110,15 +146,20 @@ public class App {
 		initialiseSetOfActions();
 		initialiseSetOfPolicies();
 		initialiseStateOfGame();
+		initialiseRoleActionsMap();
 
 		/**
 		 * https://stackoverflow.com/questions/2711067/how-do-i-dynamically-name-objects-in-java
 		 */
 		
 		Map<String, Player> playerMap = new HashMap<String, Player>();
-        for (int k=0; k<1; k++){
+        for (int k=0; k<2; k++){
+        	Random rand = new Random();
+        	int numChoice = rand.nextInt(roleActionsMap.size());
+        	List<String> listofroles = new ArrayList<String>(roleActionsMap.keySet());
+			String role = listofroles.get(numChoice);
         	String playerName = "agent_" + Integer.toString(k);
-        	playerMap.put(playerName, new Player(setOfActions, setOfPolicies, playerName));
+        	playerMap.put(playerName, new Player(roleActionsMap.get(role), setOfPolicies, playerName, role));
         	//playerMap.get(playerName).start();
         	playerMap.get(playerName).setName(playerName);
         }

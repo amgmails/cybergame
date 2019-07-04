@@ -1,6 +1,7 @@
 package mytweetyapp;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,16 +25,20 @@ public class Player extends Thread{
 	Set<Action> setOfActions;
 	Set<Policy> setOfPolicies;
 	String playerName;
+	String role;
 	public Map<String, GameEngine> geMap;
 	private int ticks = 0;
 	
 	public Vector<Message> messageQueue = new Vector<Message>();
+	public Action tempAction = null;
+	private Map<Action, Integer> effectiveActionMap = new HashMap<Action, Integer>();
 	
 	
-	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName) {
+	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName, String role) {
 		this.playerName = playerName;
 		this.setOfActions = setOfActions;
 		this.setOfPolicies = setOfPolicies;
+		this.role = role;
 	}
 	
 	private Set<Policy> getActivePolicies(Set<Policy> setOfPolicies, Set<PropositionalFormula> stateOfGame) {
@@ -124,19 +129,21 @@ public class Player extends Thread{
 	}
   
     private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
-		//Set<Action> results = new HashSet<Action>();
+		Set<Action> results = new HashSet<Action>();
 		
 		/**
 		 * check if the postcondition is in the state. It is better to base it on the precondition
 		*/
-		//for (Action action:setOfActions) {
-			//if (!stateOfGame.contains(action.postCondition)) {
-				//results.add(action);
-			//}
-		//}
+		for (Action action:setOfActions) {
+			if (stateOfGame.containsAll(action.preCondition)) {
+				if (! effectiveActionMap.keySet().contains(action)) {
+					results.add(action);
+				}
+			}
+		}
 		
-		//return results;
-    	return setOfActions;
+		return results;
+    	//return setOfActions;
 	}
     
     /**
@@ -165,11 +172,20 @@ public class Player extends Thread{
     			Message message = (Message) this.messageQueue.firstElement();
     	        // extracts the message from the queue 
     			this.messageQueue.removeElement(message);
+    			
+    			Set<Action> listOfActions = new HashSet<Action>();
+				for(Action oneAction:effectiveActionMap.keySet()) {
+					if(message.ticks == effectiveActionMap.get(oneAction)) {
+						listOfActions.add(oneAction);
+					}
+				}
+				effectiveActionMap.keySet().removeAll(listOfActions);
         		
     			System.out.println(this.playerName +" Received from " + message.from + " message: " + message.toString());
     			
     			if (message.header.contentEquals("inform-game-on")) {
     				System.out.println(this.playerName +": just an information, i do nothing");
+    				this.ticks +=1;
     			}
     			else {
 
@@ -190,22 +206,31 @@ public class Player extends Thread{
     					Random rand = new Random();
     					int numChoice = rand.nextInt(actionSize); 
     					Action action = listactions.get(numChoice);
+    					if (tempAction == null) {
+    						tempAction = action;
+    					}
+    					else {
+    						effectiveActionMap.put(tempAction, this.ticks + tempAction.effect);
+    						tempAction = action;
+    					}
+    					
     					msg.content = action;
     					msg.msgNo = this.ticks;
     		            msg.ticks = this.ticks;
     					geMap.get("gameengine").messageQueue.addElement(msg);
     					notify();
     					System.out.println(this.playerName + " sent message: " + msg.toString());
+    					this.ticks += action.cost;
     				}
     			}
                 //msg.msgNo += 1;
                 //msg.ticks += 1;
-    			this.ticks += 1;
+    			//this.ticks += 1;
                 sleep(1000);
         	}
     	}
     	catch (Exception e) {	
-    		System.out.println("Error: " + e.toString());
+    		e.printStackTrace();
     	}
     }
 }

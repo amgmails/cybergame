@@ -1,5 +1,6 @@
 package mytweetyapp;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,6 +21,7 @@ public class GameEngine extends Thread{
 	private int ticks = 0;
 	
 	public Vector<Message> messageQueue = new Vector<Message>();
+	private Map<Action, Integer> effectiveActionMap = new HashMap<Action, Integer>();
 	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
@@ -62,18 +64,18 @@ public class GameEngine extends Thread{
 	public static PropositionalFormula improveperformanceNOK = new Proposition("improveperformanceNOK");
 	public static PropositionalFormula improveperformanceOK = new Proposition("improveperformanceOK");
 	
-	public static Action descriptions = new Action(new Proposition("descriptions"), descriptionsNOK, descriptionsOK, "marketing", "marketing", 18, 12, 5);
-	public static Action speccharacters = new Action(new Proposition("speccharacters"), speccharactersNOK, speccharactersOK, "marketing", "", 18, 18, 5);
-	public static Action advertisement = new Action(new Proposition("advertisement"), advertisementNOK, advertisementOK, "marketing", "", 18, 18, 5);
-	public static Action securecredentials = new Action(new Proposition("securecredentials"), securecredentialsNOK, securecredentialsOK, "marketing", "", 18, 18, 5);
-	public static Action buildawareness = new Action(new Proposition("buildawareness"), buildawarenessNOK, buildawarenessOK, "marketing", "", 18, 18, 5);
-	public static Action resolvecomplaints = new Action(new Proposition("resolvecomplaints"), resolvecomplaintsNOK, resolvecomplaintsOK, "marketing", "", 18, 18, 5);
-	public static Action backupwebsite = new Action(new Proposition("backupwebsite"), backupwebsiteNOK, backupwebsiteOK, "technical", "", 18, 18, 5);
-	public static Action fixerrors = new Action(new Proposition("fixerrors"), fixerrorsNOK, fixerrorsOK, "technical", "", 18, 18, 5);
-	public static Action improvedesign = new Action(new Proposition("improvedesign"), improvedesignNOK, improvedesignOK, "technical", "", 18, 18, 5);
-	public static Action backupdatabase = new Action(new Proposition("backupdatabase"), backupdatabaseNOK, backupdatabaseOK, "technical", "", 18, 18, 5);
-	public static Action encryptcredentials = new Action(new Proposition("encryptcredentials"), encryptcredentialsNOK, encryptcredentialsOK, "technical", "", 18, 18, 5);
-	public static Action improveperformance = new Action(new Proposition("improveperformance"), improveperformanceNOK, improveperformanceOK, "technical", "", 18, 18, 5);
+	public static Action descriptions = new Action(new Proposition("descriptions"), new HashSet<PropositionalFormula>(Arrays.asList(descriptionsNOK)) , new HashSet<PropositionalFormula>(Arrays.asList(descriptionsOK)), "marketing", "marketing", 18, 12, 5, 10);
+	public static Action speccharacters = new Action(new Proposition("speccharacters"), new HashSet<PropositionalFormula>(Arrays.asList(speccharactersNOK)), new HashSet<PropositionalFormula>(Arrays.asList(speccharactersOK)), "marketing", "", 18, 18, 5, 9);
+	public static Action advertisement = new Action(new Proposition("advertisement"), new HashSet<PropositionalFormula>(Arrays.asList(advertisementNOK)), new HashSet<PropositionalFormula>(Arrays.asList(advertisementOK)), "marketing", "", 18, 18, 5, 8);
+	public static Action securecredentials = new Action(new Proposition("securecredentials"), new HashSet<PropositionalFormula>(Arrays.asList(securecredentialsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(securecredentialsOK)), "marketing", "", 18, 18, 5, 10);
+	public static Action buildawareness = new Action(new Proposition("buildawareness"), new HashSet<PropositionalFormula>(Arrays.asList(buildawarenessNOK)), new HashSet<PropositionalFormula>(Arrays.asList(buildawarenessOK)), "marketing", "", 18, 18, 5, 9);
+	public static Action resolvecomplaints = new Action(new Proposition("resolvecomplaints"), new HashSet<PropositionalFormula>(Arrays.asList(resolvecomplaintsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(resolvecomplaintsOK)), "marketing", "", 18, 18, 5, 8);
+	public static Action backupwebsite = new Action(new Proposition("backupwebsite"), new HashSet<PropositionalFormula>(Arrays.asList(backupwebsiteNOK)), new HashSet<PropositionalFormula>(Arrays.asList(backupwebsiteOK)), "technical", "", 18, 18, 5, 7);
+	public static Action fixerrors = new Action(new Proposition("fixerrors"), new HashSet<PropositionalFormula>(Arrays.asList(fixerrorsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(fixerrorsOK)), "technical", "", 18, 18, 5, 6);
+	public static Action improvedesign = new Action(new Proposition("improvedesign"), new HashSet<PropositionalFormula>(Arrays.asList(improvedesignNOK)), new HashSet<PropositionalFormula>(Arrays.asList(improvedesignOK)), "technical", "", 18, 18, 5, 10);
+	public static Action backupdatabase = new Action(new Proposition("backupdatabase"), new HashSet<PropositionalFormula>(Arrays.asList(backupdatabaseNOK)), new HashSet<PropositionalFormula>(Arrays.asList(backupdatabaseOK)), "technical", "", 18, 18, 5, 9);
+	public static Action encryptcredentials = new Action(new Proposition("encryptcredentials"), new HashSet<PropositionalFormula>(Arrays.asList(encryptcredentialsNOK)), new HashSet<PropositionalFormula>(Arrays.asList(encryptcredentialsOK)), "technical", "", 18, 18, 5, 8);
+	public static Action improveperformance = new Action(new Proposition("improveperformance"), new HashSet<PropositionalFormula>(Arrays.asList(improveperformanceNOK)), new HashSet<PropositionalFormula>(Arrays.asList(improveperformanceOK)), "technical", "", 18, 18, 5, 7);
 	
 	public static Set<Action> setOfActions = new HashSet<Action>();
 	
@@ -116,6 +118,7 @@ public class GameEngine extends Thread{
 //	public static Set<Action> setOfActions = new HashSet<Action>();
 	
 	public static Map<String, Action> actionMap = new HashMap<String, Action>();
+	public static Map<String, Action> tempActionMap = new HashMap<String, Action>();
 	public static Map<String, Integer> scoreMap = new HashMap<String, Integer>();
 	
 //	private void initialiseSetOfActions() {
@@ -151,19 +154,62 @@ public class GameEngine extends Thread{
 //	}
 		
 	public Set<PropositionalFormula> stateOfGame = new HashSet<PropositionalFormula>();
+	//public Set<PropositionalFormula> tempStateOfGame = new HashSet<PropositionalFormula>();
 	
 	private void initialiseStateOfGame() {
 		stateOfGame.add(start);
+		stateOfGame.add(advertisementNOK);
+		stateOfGame.add(backupdatabaseNOK);
+		stateOfGame.add(backupwebsiteNOK);
+		stateOfGame.add(buildawarenessNOK);
+		stateOfGame.add(descriptionsNOK);
+		stateOfGame.add(encryptcredentialsNOK);
+		stateOfGame.add(fixerrorsNOK);
+		stateOfGame.add(improvedesignNOK);
+		stateOfGame.add(improveperformanceNOK);
+		stateOfGame.add(resolvecomplaintsNOK);
+		stateOfGame.add(securecredentialsNOK);
+		stateOfGame.add(speccharactersNOK);
 	}
 	
-	public void updateStateOfGame(Action action) {
-		stateOfGame.add(action.postCondition);
+	public void updateStateNScore(String playerName, Action action) {
+		try {
+			stateOfGame.addAll(tempActionMap.get(playerName).postCondition);
+			stateOfGame.removeAll(tempActionMap.get(playerName).preCondition);
+			effectiveActionMap.put(tempActionMap.get(playerName), this.ticks + tempActionMap.get(playerName).effect);
+			computeScore(playerName);
+			//int oldValue = scoreMap.get(playerName);
+			//scoreMap.replace(playerName, oldValue + tempActionMap.get(playerName).utility1 - tempActionMap.get(playerName).cost);
+			tempActionMap.put(playerName, action);
+		}
+		catch(Exception e) {
+			tempActionMap.put(playerName, action);
+		}
 	}
 	
-	public void updateScore(String playerName, Action action) {
-		int oldValue = scoreMap.get(playerName);
-		scoreMap.replace(playerName, oldValue + action.utility1 - action.cost);
-	}
+	public void computeScore(String playerName) {
+        //int num_role = 0;
+        int num_action = 0;
+        Action chosen_action = tempActionMap.get(playerName);
+		for (String complayer:tempActionMap.keySet()){
+			if (playerMap.get(complayer).role == playerMap.get(playerName).role){
+				//num_role += 1;
+				if(tempActionMap.get(playerName) == tempActionMap.get(complayer)){
+                    num_action +=1;
+				}
+			}
+		}
+		
+		if(num_action >1){
+            int new_score = scoreMap.get(playerName) + chosen_action.utility1;
+            scoreMap.put(playerName, new_score);
+		}
+		if(num_action == 1){
+            int new_score = scoreMap.get(playerName) + chosen_action.utility2;
+            scoreMap.put(playerName, new_score);
+		}
+}
+
 	
 	public GameEngine(/*Map<String, Player> playerMap,*/ String engineName) {
 		this.engineName = engineName;
@@ -219,6 +265,24 @@ public class GameEngine extends Thread{
         		while (this.messageQueue.size() < playerMap.size()) {
         			wait(5);
         		}
+        		
+        		Set<Action> listOfActions = new HashSet<Action>();
+				for(Action oneAction:effectiveActionMap.keySet()) {
+					if(this.ticks == effectiveActionMap.get(oneAction)) {
+						listOfActions.add(oneAction);
+						//effectiveActionMap.remove(oneAction);
+						//stateOfGame.removeAll(oneAction.postCondition);
+						//stateOfGame.addAll(oneAction.preCondition);
+					}
+				}
+				effectiveActionMap.keySet().removeAll(listOfActions);
+				
+				for(Action oneAction:listOfActions) {
+					stateOfGame.removeAll(oneAction.postCondition);
+					stateOfGame.addAll(oneAction.preCondition);
+				}
+				
+				
         		for (int i = 0; i < playerMap.size(); i++) {
         			
         			//System.out.println(this.messageQueue.size());
@@ -233,8 +297,7 @@ public class GameEngine extends Thread{
         			}
         			else {
         	        	Action selectedAction = (Action) message.content;
-        	        	updateStateOfGame(selectedAction);
-        	        	updateScore(message.from, selectedAction);
+        	        	updateStateNScore(message.from, selectedAction);
 
         	        	System.out.println("Player " + message.from + " new score is " + scoreMap.get(message.from).toString());
         			}
