@@ -7,8 +7,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
+import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.Proposition;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
 
 /*
  * inspired from https://www.geeksforgeeks.org/message-passing-in-java/
@@ -118,24 +124,14 @@ public class GameEngine extends Thread{
 //	public static Set<Action> setOfActions = new HashSet<Action>();
 	
 	public static Map<String, Action> actionMap = new HashMap<String, Action>();
+	private void initialiseActionMap() {
+		for (Action action:setOfActions) {
+			actionMap.put(action.actionName.getName(), action);
+		}
+	}
+	
 	public static Map<String, Action> tempActionMap = new HashMap<String, Action>();
 	public static Map<String, Integer> scoreMap = new HashMap<String, Integer>();
-	
-//	private void initialiseSetOfActions() {
-//		setOfActions.add(reportWriting);
-//		setOfActions.add(excelWork);
-//		setOfActions.add(treatSensitiveFolder);
-//		setOfActions.add(A);
-//		setOfActions.add(B);
-//		setOfActions.add(C);
-//		
-//		actionMap.put(reportWriting.actionName.getName(), reportWriting);
-//		actionMap.put(excelWork.actionName.getName(), excelWork);
-//		actionMap.put(treatSensitiveFolder.actionName.getName(), treatSensitiveFolder);
-//		actionMap.put(A.actionName.getName(), A);
-//		actionMap.put(B.actionName.getName(), B);
-//		actionMap.put(C.actionName.getName(), C);
-//	}
 	
 	private void initialiseScores() {
 		
@@ -144,14 +140,6 @@ public class GameEngine extends Thread{
 		}
 
 	}
-	
-//	public Policy obligedToTreatSensitiveFolder = new Policy(new Modality("Obliged"), treatSensitiveFolder, sensitiveFolderNotTreated, sensitiveFolderTreated);
-//	
-//	public Set<Policy> setOfPolicies = new HashSet<Policy>();
-	
-//	private void initialiseSetOfPolicies() {
-//		setOfPolicies.add(obligedToTreatSensitiveFolder);
-//	}
 		
 	public Set<PropositionalFormula> stateOfGame = new HashSet<PropositionalFormula>();
 	//public Set<PropositionalFormula> tempStateOfGame = new HashSet<PropositionalFormula>();
@@ -172,22 +160,22 @@ public class GameEngine extends Thread{
 		stateOfGame.add(speccharactersNOK);
 	}
 	
-	public void updateStateNScore(String playerName, Action action) {
+	public synchronized void updateStateOfGame(String playerName, Action action) {
 		try {
 			stateOfGame.addAll(tempActionMap.get(playerName).postCondition);
-			stateOfGame.removeAll(tempActionMap.get(playerName).preCondition);
 			effectiveActionMap.put(tempActionMap.get(playerName), this.ticks + tempActionMap.get(playerName).effect);
 			computeScore(playerName);
+			stateOfGame.removeAll(tempActionMap.get(playerName).preCondition);
 			//int oldValue = scoreMap.get(playerName);
 			//scoreMap.replace(playerName, oldValue + tempActionMap.get(playerName).utility1 - tempActionMap.get(playerName).cost);
-			tempActionMap.put(playerName, action);
+			tempActionMap.replace(playerName, action);
 		}
 		catch(Exception e) {
 			tempActionMap.put(playerName, action);
 		}
 	}
 	
-	public void computeScore(String playerName) {
+	public synchronized void computeScore(String playerName) {
         //int num_role = 0;
         int num_action = 0;
         Action chosen_action = tempActionMap.get(playerName);
@@ -202,29 +190,42 @@ public class GameEngine extends Thread{
 		
 		if(num_action >1){
             int new_score = scoreMap.get(playerName) + chosen_action.utility1;
-            scoreMap.put(playerName, new_score);
+            scoreMap.replace(playerName, new_score);
 		}
 		if(num_action == 1){
             int new_score = scoreMap.get(playerName) + chosen_action.utility2;
-            scoreMap.put(playerName, new_score);
-		}
-}
+            scoreMap.replace(playerName, new_score);
+		}     
+	}
 
 	
 	public GameEngine(/*Map<String, Player> playerMap,*/ String engineName) {
 		this.engineName = engineName;
 		//this.playerMap = playerMap;
 	}
+	
+	public synchronized void sendMessage(Channel channel, String playerName, Message message) throws Exception {
+		channel.queueDeclare(playerName, false, false, false, null);
+		channel.basicPublish("", playerName, null, message.toJSON().getBytes("UTF-8"));
+        System.out.println("GE [x] Sent '" + message.printMessage() + "'" + " to "+ playerName + ".");
+	}
 	    
     @Override
     public synchronized void run() {
     	
     	try {
+    		ConnectionFactory factory = new ConnectionFactory();
+	        factory.setHost("localhost");
+	        Connection connection = factory.newConnection();
+	        Channel channel = connection.createChannel();
+	        channel.queueDeclare("gameengine", false, false, false, null);
+	        
     		initialiseSetOfActions();
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
+    		initialiseActionMap();
     		initialiseScores();
-        	System.out.println("Game engine Waiting for the messages.........");
+        	//System.out.println("Game engine Waiting for the messages.........");
         	
             Message msg = new Message();
             msg.msgNo = 0;
@@ -235,44 +236,33 @@ public class GameEngine extends Thread{
             
           //sending to all players
             for (String player:playerMap.keySet()) {
-            	playerMap.get(player).messageQueue.addElement(msg);
-            	notify();
+            	System.out.println("INFORMING GAME START");
+            	sendMessage(channel, player, msg);
             }
-            System.out.println(this.engineName + " sent message: " + msg.toString());
-            //msg.msgNo += 1;
-            //msg.ticks += 1;
+            //System.out.println(this.engineName + " sent to all players message: " + msg.printMessage());
             this.ticks +=1;
             
             msg.header = "inform-state";
-            msg.content = stateOfGame;
+            PropositionalFormula state_of_game = new Conjunction(stateOfGame);
+        	msg.content = state_of_game.toString();
             msg.msgNo = this.ticks;
             msg.ticks = this.ticks;
         	
             //sending to all players
+            System.out.println("REQUEST FOR ACTIONS --> SENDING STATE OF GAME");
             for (String player:playerMap.keySet()) {
-            	playerMap.get(player).messageQueue.addElement(msg);
-            	notify();
+            	sendMessage(channel, player, msg);
             }
-            System.out.println(this.engineName + " sent message: " + msg.toString());
-            //msg.msgNo += 1;
-            //msg.ticks += 1;
+            //System.out.println(this.engineName + " sent to all players message: " + msg.printMessage());
             this.ticks +=1;
         	
         	
         	while (!setOfActions.isEmpty()) {
-        		//sleep(20);
         		
-        		while (this.messageQueue.size() < playerMap.size()) {
-        			wait(5);
-        		}
-        		
-        		Set<Action> listOfActions = new HashSet<Action>();
+          		Set<Action> listOfActions = new HashSet<Action>();
 				for(Action oneAction:effectiveActionMap.keySet()) {
 					if(this.ticks == effectiveActionMap.get(oneAction)) {
 						listOfActions.add(oneAction);
-						//effectiveActionMap.remove(oneAction);
-						//stateOfGame.removeAll(oneAction.postCondition);
-						//stateOfGame.addAll(oneAction.preCondition);
 					}
 				}
 				effectiveActionMap.keySet().removeAll(listOfActions);
@@ -281,50 +271,54 @@ public class GameEngine extends Thread{
 					stateOfGame.removeAll(oneAction.postCondition);
 					stateOfGame.addAll(oneAction.preCondition);
 				}
-				
-				
-        		for (int i = 0; i < playerMap.size(); i++) {
-        			
-        			//System.out.println(this.messageQueue.size());
-        			Message message = (Message) this.messageQueue.firstElement();
-        	        // extracts the message from the queue 
-        			this.messageQueue.removeElement(message);
-
-        			System.out.println(this.engineName +" Received from " + message.from + " message: " + message.toString());
-        			
-        			if (message.content.toString().contentEquals("pass")) {
-        				System.out.println("Player "+ message.from + " decided to pass");
+        		
+    		    DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+    		        String message = new String(delivery.getBody(), "UTF-8");
+    		        Message contenu = Message.fromJSON(message);
+    		        System.out.println("GE [x] Received '" + message + "' from " + contenu.from);
+    		        
+    		        if (contenu.content.contentEquals("pass")) {
+        				System.out.println(contenu.from + " decided to pass");
         			}
         			else {
-        	        	Action selectedAction = (Action) message.content;
-        	        	updateStateNScore(message.from, selectedAction);
-
-        	        	System.out.println("Player " + message.from + " new score is " + scoreMap.get(message.from).toString());
+        				
+        				Action selectedAction = actionMap.get(contenu.content);
+        				updateStateOfGame(contenu.from, selectedAction);
+        				System.out.println(contenu.from + " new score is " + scoreMap.get(contenu.from));
         			}
-        		}
-	        		
-        		System.out.println(stateOfGame.toString() + " is state of game");
-
-	        	msg.content = stateOfGame;
-	            msg.msgNo = this.ticks;
+    		    	
+    		    };
+    		    channel.basicConsume("gameengine", true, deliverCallback, consumerTag -> { });
+    		    
+    		    state_of_game = new Conjunction(stateOfGame);
+            	msg.content = state_of_game.toString();
+            	msg.msgNo = this.ticks;
 	            msg.ticks = this.ticks;
-	        	
-	            //sending to all players
-	            for (String player:playerMap.keySet()) {
-	            	playerMap.get(player).messageQueue.addElement(msg);
-	            	notify();
-	            }
-	            System.out.println(this.engineName + " sent message: " + msg.toString());
-	            //msg.msgNo += 1;
-	            //msg.ticks += 1;
-	            this.ticks +=1;
 	            
-	            wait(1000);
+        		System.out.println("STATE OF GAME");
+        		System.out.println(stateOfGame);
+            	
+                //computing scores for all players
+//	            System.out.println("COMPUTING SCORES FOR ALL PLAYERS");
+//                for (String player:playerMap.keySet()) {
+//                	computeScore(player);
+//                	System.out.println(player + " new score is " + scoreMap.get(player));
+//                }
+                
+                //sending to all players
+	            System.out.println("REQUEST FOR ACTIONS --> SENDING STATE OF GAME");
+                for (String player:playerMap.keySet()) {
+                	sendMessage(channel, player, msg);
+                }
+                
+                this.ticks +=1;
+        			            
+	            wait(50);
         	}
     	}
+    	
     	catch (Exception e) {
     		e.printStackTrace();
-    		
     	}
     }   
 

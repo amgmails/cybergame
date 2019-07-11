@@ -153,7 +153,7 @@ public class App {
 		 */
 		
 		Map<String, Player> playerMap = new HashMap<String, Player>();
-        for (int k=0; k<2; k++){
+        for (int k=0; k<1; k++){
         	Random rand = new Random();
         	int numChoice = rand.nextInt(roleActionsMap.size());
         	List<String> listofroles = new ArrayList<String>(roleActionsMap.keySet());
