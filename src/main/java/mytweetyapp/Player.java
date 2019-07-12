@@ -1,6 +1,7 @@
 package mytweetyapp;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
+import java.util.LinkedList;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
 import net.sf.tweety.logics.pl.syntax.Conjunction;
@@ -127,10 +129,27 @@ public class Player extends Thread{
 		}
 		
 		for (Policy  policy:violatedPolicies) {
-			utility -= policy.punishment;
+			utility -= policy.punishment * geMap.get("gameengine").scoreMap.get(this.playerName);
 		}
 		
 		return utility;
+	}
+	
+	private List<Action> chooseAction(List<Action> listactions, Set<PropositionalFormula> stateOfGame) {
+		int max_utility = -100000;
+		List<Action> result = new ArrayList<Action>();
+		for(Action action:listactions) {
+			int action_utility = utility(action, stateOfGame);
+			if (action_utility == max_utility) {
+				result.add(action);
+			}
+			if (action_utility > max_utility) {
+				result = new ArrayList<Action>(Arrays.asList(action));
+				max_utility = action_utility;
+			}
+			
+		}
+		return result;
 	}
   
     private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
@@ -164,6 +183,7 @@ public class Player extends Thread{
     public synchronized void run() {
     	
     	try {
+    		Random rand = new Random();
     		
     		ConnectionFactory factory = new ConnectionFactory();
 	        factory.setHost("localhost");
@@ -218,9 +238,14 @@ public class Player extends Thread{
         	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(contenu.content);
         	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
         	        		
-        					int actionSize = availableActions.size();
+//        					int actionSize = availableActions.size();
         					List<Action> listactions = new ArrayList<Action>(availableActions);
-        					Random rand = new Random();
+//        					Random rand = new Random();
+//        					int numChoice = rand.nextInt(actionSize); 
+//        					Action action = listactions.get(numChoice);
+        					
+        					List<Action> actions = chooseAction(listactions, state_of_game.getLiterals());
+        					int actionSize = actions.size();
         					int numChoice = rand.nextInt(actionSize); 
         					Action action = listactions.get(numChoice);
         					msg.content = action.actionName.getName();

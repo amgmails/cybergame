@@ -7,8 +7,9 @@ public class Policy {
 	Modality modality;
 	Action actionName;
 	PropositionalFormula activationCondition, deactivationCondition;
-	int reward, punishment;
-	public Policy(Modality modality, Action actionName, PropositionalFormula activationCondition, PropositionalFormula deactivationCondition, int reward, int punishment) {
+	int reward;
+	float punishment;
+	public Policy(Modality modality, Action actionName, PropositionalFormula activationCondition, PropositionalFormula deactivationCondition, int reward, float punishment) {
 		super();
 		this.modality = modality;
 		this.actionName = actionName;
