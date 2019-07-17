@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
-import java.util.LinkedList;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
 import net.sf.tweety.logics.pl.syntax.Conjunction;
@@ -216,8 +215,13 @@ public class Player extends Thread{
     				effectiveActionMap.keySet().removeAll(listOfActions);
     		        
     		        if (contenu.header.contentEquals("inform-game-on")) {
-        				System.out.println(this.playerName +": just an information, i do nothing");
+        				System.out.println(this.playerName +": just an information that the game started, i do nothing");
         				this.ticks +=1;
+        			}
+    		        else if (contenu.header.contentEquals("inform-game-off")) {
+        				System.out.println(this.playerName +": just an information that the game ended, i do nothing");
+        				this.ticks +=1;
+        				this.stop();
         			}
         			else {
 
