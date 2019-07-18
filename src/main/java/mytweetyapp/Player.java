@@ -30,21 +30,26 @@ public class Player extends Thread{
 	
 	Set<Action> setOfActions;
 	Set<Policy> setOfPolicies;
-	String playerName;
-	String role;
+	String playerName, role;
 	public Map<String, GameEngine> geMap;
-	private int ticks = 0;
+	int ticks = 0;
+	int setupid, sessionid, runid;
+	
+	boolean gameOn = true;
 	
 	public Vector<Message> messageQueue = new Vector<Message>();
 	public Action tempAction = null;
 	private Map<Action, Integer> effectiveActionMap = new HashMap<Action, Integer>();
 	
 	
-	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName, String role) {
+	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName, String role, int setupid, int sessionid, int runid) {
 		this.playerName = playerName;
 		this.setOfActions = setOfActions;
 		this.setOfPolicies = setOfPolicies;
 		this.role = role;
+		this.setupid = setupid;
+		this.sessionid = sessionid;
+		this.runid = runid;
 	}
 	
 	private Set<Policy> getActivePolicies(Set<Policy> setOfPolicies, Set<PropositionalFormula> stateOfGame) {
@@ -170,8 +175,9 @@ public class Player extends Thread{
 	}
     
 	public void sendMessage(Channel channel, String playerName, Message message) throws Exception {
-		channel.queueDeclare("gameengine", false, false, false, null);
-		channel.basicPublish("", "gameengine", null, message.toJSON().getBytes("UTF-8"));
+		String queue_name = "ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid);
+		channel.queueDeclare(queue_name, false, false, false, null);
+		channel.basicPublish("", queue_name, null, message.toJSON().getBytes("UTF-8"));
         System.out.println(this.getName() + " [x] Sent '" + message.printMessage() + "'" + " to GE.");
 	}
     
@@ -188,7 +194,7 @@ public class Player extends Thread{
 	        factory.setHost("localhost");
 	        Connection connection = factory.newConnection();
 	        Channel channel = connection.createChannel();
-	        channel.queueDeclare(this.playerName, false, false, false, null);
+	        channel.queueDeclare(this.playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), false, false, false, null);
 
         	System.out.println(this.playerName + ": "+ "Waiting for the messages.........");
             
@@ -199,7 +205,8 @@ public class Player extends Thread{
             msg.content = "pass";
             msg.from = this.playerName;
        	
-        	while (!setOfActions.isEmpty()) {
+        	while (gameOn) {
+        		wait(10);
         		
         		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
     		        String message = new String(delivery.getBody(), "UTF-8");
@@ -219,9 +226,9 @@ public class Player extends Thread{
         				this.ticks +=1;
         			}
     		        else if (contenu.header.contentEquals("inform-game-off")) {
-        				System.out.println(this.playerName +": just an information that the game ended, i do nothing");
+        				System.out.println(this.playerName +": just an information that the game ended, changing gameOn variable");
         				this.ticks +=1;
-        				this.stop();
+        				gameOn = false;
         			}
         			else {
 
@@ -230,7 +237,7 @@ public class Player extends Thread{
         					msg.msgNo = this.ticks;
         		            msg.ticks = this.ticks;
         		            try {
-        		            	sendMessage(channel, "gameengine", msg);
+        		            	sendMessage(channel, "", msg);
         		            }
         		            catch (Exception e) {
         		            	e.printStackTrace();
@@ -242,44 +249,59 @@ public class Player extends Thread{
         	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(contenu.content);
         	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
         	        		
-//        					int actionSize = availableActions.size();
-        					List<Action> listactions = new ArrayList<Action>(availableActions);
-//        					Random rand = new Random();
-//        					int numChoice = rand.nextInt(actionSize); 
-//        					Action action = listactions.get(numChoice);
-        					
-        					List<Action> actions = chooseAction(listactions, state_of_game.getLiterals());
-        					int actionSize = actions.size();
-        					int numChoice = rand.nextInt(actionSize); 
-        					Action action = listactions.get(numChoice);
-        					msg.content = action.actionName.getName();
+        	        		if (availableActions.size() != 0) {
+        	        			
+//            					int actionSize = availableActions.size();
+            					List<Action> listactions = new ArrayList<Action>(availableActions);
+//            					Random rand = new Random();
+//            					int numChoice = rand.nextInt(actionSize); 
+//            					Action action = listactions.get(numChoice);
+            					
+            					List<Action> actions = chooseAction(listactions, state_of_game.getLiterals());
+            					int actionSize = actions.size();
+            					int numChoice = rand.nextInt(actionSize); 
+            					Action action = listactions.get(numChoice);
+            					msg.content = action.actionName.getName();
 
-        					if (tempAction == null) {
-        						tempAction = action;
-        					}
-        					else {
-        						effectiveActionMap.put(tempAction, this.ticks + tempAction.effect);
-        						tempAction = action;
-        					}
-        					
-        					msg.msgNo = this.ticks;
-        		            msg.ticks = this.ticks;
-        		            try {
-        		            	sendMessage(channel, "gameengine", msg);
-        		            }
-        		            catch (Exception e) {
-        		            	e.printStackTrace();
-        		            }
-        					this.ticks += action.cost;
+            					if (tempAction == null) {
+            						tempAction = action;
+            					}
+            					else {
+            						effectiveActionMap.put(tempAction, this.ticks + tempAction.effect);
+            						tempAction = action;
+            					}
+            					
+            					msg.msgNo = this.ticks;
+            		            msg.ticks = this.ticks;
+            		            try {
+            		            	sendMessage(channel, "", msg);
+            		            }
+            		            catch (Exception e) {
+            		            	e.printStackTrace();
+            		            }
+            					this.ticks += action.cost;
+        	        		}
+        	        		else {
+        	        			msg.content = "pass";
+            					msg.msgNo = this.ticks;
+            		            msg.ticks = this.ticks;
+            		            try {
+            		            	sendMessage(channel, "", msg);
+            		            }
+            		            catch (Exception e) {
+            		            	e.printStackTrace();
+            		            }
+            		            this.ticks +=1;
+        	        		}
         				}
         			}
     		    };
-    		    
-    		    channel.basicConsume(this.playerName, true, deliverCallback, consumerTag -> { });
-    		    
-                //sleep(1000);
-    		    wait(50);
+
+	    		channel.basicConsume(this.playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), true, deliverCallback, consumerTag -> { });
         	}
+        	channel.queueDelete(this.playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid));
+        	channel.close();
+		    connection.close();
     	}
     	catch (Exception e) {	
     		e.printStackTrace();

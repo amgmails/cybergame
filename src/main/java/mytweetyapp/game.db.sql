@@ -9,12 +9,14 @@ CREATE TABLE IF NOT EXISTS `session` (
 	`setupid`	INTEGER,
 	`sessionid`	INTEGER,
 	`runid`	INTEGER,
+	`stepid`	INTEGER,
 	`player`	TEXT,
 	`score`	REAL
 );
 CREATE TABLE IF NOT EXISTS `playermapping` (
 	`setupid`	INTEGER,
 	`sessionid`	INTEGER,
+	`runid`	INTEGER,
 	`player`	TEXT,
 	`numactions`	INTEGER,
 	`numpolicies`	INTEGER

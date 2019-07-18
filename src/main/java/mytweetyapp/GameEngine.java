@@ -1,8 +1,10 @@
 package mytweetyapp;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -25,14 +27,14 @@ public class GameEngine extends Thread{
 	
 	String engineName;
 	Map<String, Player> playerMap;
-	int runs = 100;
-	int setupid, sessionid;
+	int setupid, sessionid, runs, runid;
 	private int ticks = 0;
 	
 	private int num_attacks = 0;
 	
 	public Vector<Message> messageQueue = new Vector<Message>();
 	private Map<Action, Integer> effectiveActionMap = new HashMap<Action, Integer>();
+	List<String[]> gameData = new ArrayList<String[]>();
 	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
@@ -256,19 +258,20 @@ public class GameEngine extends Thread{
 			}
 		}
 	}
-
 	
-	public GameEngine(/*Map<String, Player> playerMap,*/ String engineName, int runs, int setupid, int sessionid) {
+	public GameEngine(/*Map<String, Player> playerMap,*/ String engineName, int runs, int setupid, int sessionid, int runid) {
 		this.engineName = engineName;
 		//this.playerMap = playerMap;
 		this.runs = runs;
 		this.setupid = setupid;
 		this.sessionid = sessionid;
+		this.runid = runid;
 	}
 	
 	public synchronized void sendMessage(Channel channel, String playerName, Message message) throws Exception {
-		channel.queueDeclare(playerName, false, false, false, null);
-		channel.basicPublish("", playerName, null, message.toJSON().getBytes("UTF-8"));
+		String queue_name = playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid);
+		channel.queueDeclare(queue_name, false, false, false, null);
+		channel.basicPublish("", queue_name, null, message.toJSON().getBytes("UTF-8"));
         System.out.println("GE [x] Sent '" + message.printMessage() + "'" + " to "+ playerName + ".");
 	}
 	    
@@ -281,14 +284,13 @@ public class GameEngine extends Thread{
 	        factory.setHost("localhost");
 	        Connection connection = factory.newConnection();
 	        Channel channel = connection.createChannel();
-	        channel.queueDeclare("gameengine", false, false, false, null);
+	        channel.queueDeclare("ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), false, false, false, null);
 	        
     		initialiseSetOfActions();
     		initialiseSetOfPolicies();
     		initialiseStateOfGame();
     		initialiseActionMap();
     		initialiseScores();
-        	//System.out.println("Game engine Waiting for the messages.........");
         	
             Message msg = new Message();
             msg.msgNo = 0;
@@ -344,30 +346,27 @@ public class GameEngine extends Thread{
         				System.out.println(contenu.from + " decided to pass");
         			}
         			else {
-        				
         				Action selectedAction = actionMap.get(contenu.content);
         				updateStateOfGame(contenu.from, selectedAction);
         				System.out.println(contenu.from + " new score is " + scoreMap.get(contenu.from));
         			}
-    		    	
     		    };
-    		    channel.basicConsume("gameengine", true, deliverCallback, consumerTag -> { });
+    		    
+    		    wait(60);
+    		    	
+    		    channel.basicConsume("ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), true, deliverCallback, consumerTag -> { });
     		    
     		    state_of_game = new Conjunction(stateOfGame);
             	msg.content = state_of_game.toString();
             	msg.msgNo = this.ticks;
 	            msg.ticks = this.ticks;
-	            
-        		System.out.println("STATE OF GAME");
-        		System.out.println(stateOfGame);
             	
-                //inserting values into the database
+                //inserting values into the database/csv file
         		for (String player:playerMap.keySet()) {
-        			Util.insertSession(setupid, sessionid, this.ticks, player, scoreMap.get(player));
-        			wait(50);
+        			gameData.add(new String[] {Integer.toString(setupid), Integer.toString(sessionid), Integer.toString(runid), Integer.toString(this.ticks - 1), player, Float.toString(scoreMap.get(player))});
                 }
                 
-	            System.out.println("REQUEST FOR ACTIONS --> SENDING STATE OF GAME");
+	            //System.out.println("REQUEST FOR ACTIONS --> SENDING STATE OF GAME");
                 for (String player:playerMap.keySet()) {
                 	sendMessage(channel, player, msg);
                 }
@@ -377,10 +376,9 @@ public class GameEngine extends Thread{
                 	attack = 1;
                 	System.out.println("THERE HAS BEEN AN ATTACK");
                 }
-                //double attackProb = rand.nextDouble();
                 
                 if (attack == 1) {
-                	System.out.println("RECALCULATING PLAYERS SCORE");
+                	//System.out.println("RECALCULATING PLAYERS SCORE");
                 	for (String player:playerMap.keySet()) {
                 		float max_penalty = 0.0f;
                 		for(Policy policy:playerMap.get(player).setOfPolicies) {
@@ -395,9 +393,7 @@ public class GameEngine extends Thread{
                 	}
                 }
                 
-                this.ticks +=1;
-        			            
-	            wait(50);
+                this.ticks +=1;       
         	}
         	
         	msg.header = "inform-game-off";
@@ -408,10 +404,11 @@ public class GameEngine extends Thread{
             	sendMessage(channel, player, msg);
             }
             
-            wait(100);
-            stop();
-        	
-        	
+            Util.writeDataAtOnce("game_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid) + ".csv",gameData);
+            channel.queueDelete("ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid));
+            channel.close();
+		    connection.close();
+            this.stop();
         	
     	}
     	

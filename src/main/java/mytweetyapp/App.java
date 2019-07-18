@@ -220,60 +220,6 @@ public class App {
 		return applicablePolicies;
 	}
 	
-	/*
-	 * inspired from http://www.sqlitetutorial.net/sqlite-java/insert/
-	 */
-	
-    private static Connection connect() {
-        // SQLite connection string
-        //String url = "jdbc:sqlite:/home/maixent/Documents/Msc Thesis/cybergame/src/main/java/mytweetyapp/game.db";
-        String url = "jdbc:sqlite:./src/main/java/mytweetyapp/game.db";
-        Connection conn = null;
-        try {
-            conn = DriverManager.getConnection(url);
-            System.out.println("Connection successful");
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-        return conn;
-    }
-    
-    private static void insertSetup(int setupid, String policy, float reward, float punishment) {
-        String sql = "INSERT INTO setup(setupid, policy, reward, punishment) VALUES(?,?,?,?)";
- 
-        try (Connection conn = connect();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        	System.out.println("starting setting values before insertion");
-            pstmt.setInt(1, setupid);
-            pstmt.setString(2, policy);
-            pstmt.setFloat(3, reward);
-            pstmt.setFloat(4, punishment);
-            System.out.println("preparing to insert");
-            pstmt.executeUpdate();
-            System.out.println("values inserted successfully");
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-    
-    private static void insertMapping(int setupid, int sessionid, String player, int numactions, int numpolicies) {
-        String sql = "INSERT INTO playermapping(setupid, sessionid, player, numactions, numpolicies) VALUES(?,?,?,?,?)";
- 
-        try (Connection conn = connect();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        	System.out.println("starting setting values before insertion");
-            pstmt.setInt(1, setupid);
-            pstmt.setInt(2, sessionid);
-            pstmt.setString(3, player);
-            pstmt.setFloat(4, numactions);
-            pstmt.setFloat(5, numpolicies);
-            System.out.println("preparing to insert");
-            pstmt.executeUpdate();
-            System.out.println("values inserted successfully");
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-    }
 	
 	public static void main(String[] args) {
 		initialiseSetOfActions();
@@ -282,7 +228,7 @@ public class App {
 		initialiseRoleActionsMap();
 		
 		int maxsetupid = 0;
-		Connection conn = connect();
+		Connection conn = Util.connect();
 		String sqlmaxid = "select max(setup.setupid) maxsetupid from setup";
 		try {
 			int numrows = 0;
@@ -297,47 +243,48 @@ public class App {
 					maxsetupid = rs.getInt(1);
 				}
 			}
+			conn.close();
 		}
 		catch(Exception e) {
 			System.out.println(e.getMessage());
 		}
 		
-		for (int setupid = maxsetupid + 1; setupid < maxsetupid + 1 + 5; setupid++) {
+		for (int setupid = maxsetupid + 1; setupid < maxsetupid + 1 + 100; setupid++) {
 			Random rand = new Random();
 			//System.out.println("...");
 			setPoliciesValues();
 			for(Policy policy:setOfPolicies) {
-				insertSetup(setupid, policy.getName(), policy.reward, policy.punishment);
+				Util.insertSetup(setupid, policy.getName(), policy.reward, policy.punishment);
 			}
 			
-			int numPlayers = rand.nextInt(10) + 1;
 			int  totalactions = 3;
 			
-			for (int sessionid = 1; sessionid <= 10; sessionid++) {
-				Map<String, Player> playerMap = new HashMap<String, Player>();
-				for (int k = 0; k < numPlayers; k++) {
-					String playerName = "agent_" + Integer.toString(k);
-					Set<Action> playerActions = getPlayersActions(setOfActions, totalactions);
-					Set<Policy> playerPolicies = applicablePolicies(playerActions);
-		        	playerMap.put(playerName, new Player(playerActions, playerPolicies, playerName, ""));
-		        	//playerMap.get(playerName).start();
-		        	playerMap.get(playerName).setName(playerName);
-		        	insertMapping(setupid, sessionid, playerName, playerActions.size(), playerPolicies.size());
+			for (int sessionid = 1; sessionid <= 5; sessionid++) {
+				int numPlayers = rand.nextInt(10) + 1;
+				for (int runid = 1; runid <= 100; runid++) {
+					Map<String, Player> playerMap = new HashMap<String, Player>();
+					for (int k = 0; k < numPlayers; k++) {
+						String playerName = "agent" + Integer.toString(k);
+						Set<Action> playerActions = getPlayersActions(setOfActions, totalactions);
+						Set<Policy> playerPolicies = applicablePolicies(playerActions);
+			        	playerMap.put(playerName, new Player(playerActions, playerPolicies, playerName, "", setupid, sessionid, runid));
+			        	playerMap.get(playerName).setName(playerName);
+			        	Util.insertMapping(setupid, sessionid, runid, playerName, playerActions.size(), playerPolicies.size());
+					}
+					Map<String, GameEngine> geMap = new HashMap<String, GameEngine>();
+			        geMap.put("gameengine", new GameEngine("gameengine", sessionid * 100 + 1, setupid, sessionid, runid));
+			        
+			        for (String playerName:playerMap.keySet()) {
+			        	playerMap.get(playerName).geMap = geMap;
+			        	playerMap.get(playerName).start();			        	
+			        }
+			        
+			        for (String geName:geMap.keySet()) {
+			        	geMap.get(geName).playerMap = playerMap;
+			        	geMap.get(geName).start();
+			        }
 				}
-				Map<String, GameEngine> geMap = new HashMap<String, GameEngine>();
-		        geMap.put("gameengine", new GameEngine("gameengine", sessionid*100, setupid, sessionid));
-		        
-		        for (String playerName:playerMap.keySet()) {
-		        	playerMap.get(playerName).geMap = geMap;
-		        	playerMap.get(playerName).start();
-		        }
-		        
-		        for (String geName:geMap.keySet()) {
-		        	geMap.get(geName).playerMap = playerMap;
-		        	geMap.get(geName).start();
-		        }
 			}
-			
 		}
 
 		/**
