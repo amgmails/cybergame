@@ -352,7 +352,7 @@ public class GameEngine extends Thread{
         			}
     		    };
     		    
-    		    wait(60);
+    		    wait(5);
     		    	
     		    channel.basicConsume("ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), true, deliverCallback, consumerTag -> { });
     		    
@@ -393,7 +393,8 @@ public class GameEngine extends Thread{
                 	}
                 }
                 
-                this.ticks +=1;       
+                this.ticks +=1;
+                wait(5);
         	}
         	
         	msg.header = "inform-game-off";
@@ -405,10 +406,10 @@ public class GameEngine extends Thread{
             }
             
             Util.writeDataAtOnce("game_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid) + ".csv",gameData);
+            
             channel.queueDelete("ge" + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid));
             channel.close();
 		    connection.close();
-            this.stop();
         	
     	}
     	

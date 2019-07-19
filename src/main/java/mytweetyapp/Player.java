@@ -206,7 +206,7 @@ public class Player extends Thread{
             msg.from = this.playerName;
        	
         	while (gameOn) {
-        		wait(10);
+        		wait(5);
         		
         		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
     		        String message = new String(delivery.getBody(), "UTF-8");

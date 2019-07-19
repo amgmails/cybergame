@@ -1,6 +1,7 @@
 package mytweetyapp;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import java.sql.*;
 
@@ -221,7 +222,7 @@ public class App {
 	}
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		initialiseSetOfActions();
 		initialiseSetOfPolicies();
 		initialiseStateOfGame();
@@ -249,7 +250,7 @@ public class App {
 			System.out.println(e.getMessage());
 		}
 		
-		for (int setupid = maxsetupid + 1; setupid < maxsetupid + 1 + 100; setupid++) {
+		for (int setupid = maxsetupid + 1; setupid <= 25; setupid++) {
 			Random rand = new Random();
 			//System.out.println("...");
 			setPoliciesValues();
@@ -260,8 +261,10 @@ public class App {
 			int  totalactions = 3;
 			
 			for (int sessionid = 1; sessionid <= 5; sessionid++) {
-				int numPlayers = rand.nextInt(10) + 1;
-				for (int runid = 1; runid <= 100; runid++) {
+				//int numPlayers = rand.nextInt(10) + 1;
+				ExecutorService executor = Executors.newFixedThreadPool(50);
+				for (int runid = 1; runid <= 50; runid++) {
+					int numPlayers = rand.nextInt(10) + 1;
 					Map<String, Player> playerMap = new HashMap<String, Player>();
 					for (int k = 0; k < numPlayers; k++) {
 						String playerName = "agent" + Integer.toString(k);
@@ -274,16 +277,12 @@ public class App {
 					Map<String, GameEngine> geMap = new HashMap<String, GameEngine>();
 			        geMap.put("gameengine", new GameEngine("gameengine", sessionid * 100 + 1, setupid, sessionid, runid));
 			        
-			        for (String playerName:playerMap.keySet()) {
-			        	playerMap.get(playerName).geMap = geMap;
-			        	playerMap.get(playerName).start();			        	
-			        }
-			        
-			        for (String geName:geMap.keySet()) {
-			        	geMap.get(geName).playerMap = playerMap;
-			        	geMap.get(geName).start();
-			        }
+			        Game game = new Game(geMap, playerMap);
+			        executor.submit(game);     
 				}
+						
+				executor.awaitTermination(60 * sessionid, TimeUnit.SECONDS);
+				executor.shutdown();
 			}
 		}
 
