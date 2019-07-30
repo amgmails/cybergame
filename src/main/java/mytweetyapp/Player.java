@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import net.sf.tweety.logics.pl.parser.PlParser;
-import net.sf.tweety.logics.pl.syntax.Conjunction;
+//import net.sf.tweety.logics.pl.syntax.Conjunction;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
 import com.rabbitmq.client.Channel;
@@ -28,8 +28,8 @@ import com.rabbitmq.client.DeliverCallback;
 
 public class Player extends Thread{
 	
-	Set<Action> setOfActions;
-	Set<Policy> setOfPolicies;
+	List<Action> setOfActions;
+	List<Policy> setOfPolicies;
 	String playerName, role;
 	public Map<String, GameEngine> geMap;
 	int ticks = 0;
@@ -42,7 +42,7 @@ public class Player extends Thread{
 	private Map<Action, Integer> effectiveActionMap = new HashMap<Action, Integer>();
 	
 	
-	public Player(Set<Action> setOfActions, Set<Policy> setOfPolicies, String playerName, String role, int setupid, int sessionid, int runid) {
+	public Player(List<Action> setOfActions, List<Policy> setOfPolicies, String playerName, String role, int setupid, int sessionid, int runid) {
 		this.playerName = playerName;
 		this.setOfActions = setOfActions;
 		this.setOfPolicies = setOfPolicies;
@@ -52,8 +52,8 @@ public class Player extends Thread{
 		this.runid = runid;
 	}
 	
-	private Set<Policy> getActivePolicies(Set<Policy> setOfPolicies, Set<PropositionalFormula> stateOfGame) {
-		Set<Policy> activePolicies = new HashSet<Policy>();
+	private List<Policy> getActivePolicies(List<Policy> setOfPolicies, Set<PropositionalFormula> stateOfGame) {
+		List<Policy> activePolicies = new ArrayList<Policy>();
 		for (Policy policy:setOfPolicies) {
 			if (policy.isActive(stateOfGame)) {
 				activePolicies.add(policy);
@@ -101,8 +101,8 @@ public class Player extends Thread{
 		}
 	}
 	
-	private Set<Policy> fulfilledPolicies (Action action, Set<Policy> setOfPolicies) {
-		Set<Policy> result = new HashSet<Policy>();
+	private List<Policy> fulfilledPolicies (Action action, List<Policy> setOfPolicies) {
+		List<Policy> result = new ArrayList<Policy>();
 		for (Policy policy:setOfPolicies) {
 			if (doesActionFulfillPolicy(action, policy)) {
 				result.add(policy);
@@ -111,8 +111,8 @@ public class Player extends Thread{
 		return result;
 	}
 	
-	private Set<Policy> violatedPolicies (Action action, Set<Policy> SetOfPolicies) {
-		Set<Policy> result = new HashSet<Policy>();
+	private List<Policy> violatedPolicies (Action action, List<Policy> SetOfPolicies) {
+		List<Policy> result = new ArrayList<Policy>();
 		for (Policy policy:SetOfPolicies) {
 			if (doesActionViolatePolicy(action, policy)) {
 				result.add(policy);
@@ -124,9 +124,9 @@ public class Player extends Thread{
 	private int utility(Action action, Set<PropositionalFormula> stateOfGame) {
 		int utility = action.utility1 - action.cost;
 		
-		Set<Policy> activePolicies = getActivePolicies(setOfPolicies, stateOfGame);
-		Set<Policy> fulfilledPolicies = fulfilledPolicies(action, activePolicies);
-		Set<Policy> violatedPolicies = violatedPolicies(action, activePolicies);
+		List<Policy> activePolicies = getActivePolicies(setOfPolicies, stateOfGame);
+		List<Policy> fulfilledPolicies = fulfilledPolicies(action, activePolicies);
+		List<Policy> violatedPolicies = violatedPolicies(action, activePolicies);
 		
 		for (Policy  policy:fulfilledPolicies) {
 			utility += policy.reward;
@@ -156,8 +156,8 @@ public class Player extends Thread{
 		return result;
 	}
   
-    private Set<Action> availableActions(Set<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
-		Set<Action> results = new HashSet<Action>();
+    private List<Action> availableActions(List<Action> setOfActions, Set<PropositionalFormula> stateOfGame){
+    	List<Action> results = new ArrayList<Action>();
 		
 		/**
 		 * check if the postcondition is in the state. It is better to base it on the precondition
@@ -194,6 +194,7 @@ public class Player extends Thread{
 	        factory.setHost("localhost");
 	        Connection connection = factory.newConnection();
 	        Channel channel = connection.createChannel();
+	        channel.queueDelete(this.playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid));
 	        channel.queueDeclare(this.playerName + "_" + Integer.toString(setupid) + "_" + Integer.toString(sessionid) + "_" + Integer.toString(runid), false, false, false, null);
 
         	System.out.println(this.playerName + ": "+ "Waiting for the messages.........");
@@ -247,7 +248,7 @@ public class Player extends Thread{
         					
         					PlParser parser = new PlParser();
         	            	PropositionalFormula state_of_game = (PropositionalFormula) parser.parseFormula(contenu.content);
-        	        		Set<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
+        	            	List<Action> availableActions = availableActions(setOfActions, state_of_game.getLiterals());
         	        		
         	        		if (availableActions.size() != 0) {
         	        			

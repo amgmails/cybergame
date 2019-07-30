@@ -9,6 +9,7 @@ import net.sf.tweety.logics.pl.syntax.Proposition;
 import net.sf.tweety.logics.pl.syntax.PropositionalFormula;
 
 public class App {
+	static Random rand = new Random();
 	
 	public static PropositionalFormula start = new Proposition("start");
 	public static PropositionalFormula end = new Proposition("end");
@@ -92,7 +93,7 @@ public class App {
 	public static Action executereporting = new Action(new Proposition("executereporting"), new HashSet<PropositionalFormula>(Arrays.asList(financialReportingNOK)), new HashSet<PropositionalFormula>(Arrays.asList(financialReportingOK)), "", "", 13, 10, 5, 2);
 	public static Action auditfinances = new Action(new Proposition("auditfinances"), new HashSet<PropositionalFormula>(Arrays.asList(financialControlNOK)), new HashSet<PropositionalFormula>(Arrays.asList(financialControlOK)), "", "", 19, 13, 8, 11);
 	
-	public static Set<Action> setOfActions = new HashSet<Action>();
+	public static List<Action> setOfActions = new ArrayList<Action>();
 	
 	private static void initialiseSetOfActions() {
 		setOfActions.add(descriptions);
@@ -117,17 +118,17 @@ public class App {
 	}
 
 	
-	public static Policy obligedToRemoveSpecialCharacters = new Policy(new Modality("Obliged"), speccharacters, speccharactersNOK, speccharactersOK, 0, 0.1f);
-	public static Policy obligedToSecureCredentials = new Policy(new Modality("Obliged"), securecredentials, securecredentialsNOK, securecredentialsOK, 0, 0.2f);
-	public static Policy obligedToBackupWebsite = new Policy(new Modality("Obliged"), backupwebsite, backupwebsiteNOK, backupwebsiteOK, 0, 0.15f);
-	public static Policy obligedToFixErrors = new Policy(new Modality("Obliged"), fixerrors, fixerrorsNOK, fixerrorsOK, 0, 0.25f);
-	public static Policy obligedToBackupDatabase = new Policy(new Modality("Obliged"), backupdatabase, backupdatabaseNOK, backupdatabaseOK, 0, 0.05f);
-	public static Policy obligedToEncryptCredentials = new Policy(new Modality("Obliged"), encryptcredentials, encryptcredentialsNOK, encryptcredentialsOK, 0, 0.15f);
-	public static Policy obligedToSecureWarehouse = new Policy(new Modality("Obliged"), securewarehouse, warehouseSecurityNOK, warehouseSecurityOK, 0, 0.125f);
-	public static Policy obligedToBackupFinanceData = new Policy(new Modality("Obliged"), backupfinancedata, financeDataBackedUpNOK, financeDataBackedUpOK, 0, 0.225f);
-	public static Policy obligedToAuditFinances = new Policy(new Modality("Obliged"), auditfinances, financialControlNOK, financialControlOK, 0, 0.095f);
+	public static Policy obligedToRemoveSpecialCharacters = new Policy(new Modality("Obliged"), speccharacters, speccharactersNOK, speccharactersOK, 10, 0.5f);
+	public static Policy obligedToSecureCredentials = new Policy(new Modality("Obliged"), securecredentials, securecredentialsNOK, securecredentialsOK, 10, 0.5f);
+	public static Policy obligedToBackupWebsite = new Policy(new Modality("Obliged"), backupwebsite, backupwebsiteNOK, backupwebsiteOK, 10, 0.5f);
+	public static Policy obligedToFixErrors = new Policy(new Modality("Obliged"), fixerrors, fixerrorsNOK, fixerrorsOK, 10, 0.5f);
+	public static Policy obligedToBackupDatabase = new Policy(new Modality("Obliged"), backupdatabase, backupdatabaseNOK, backupdatabaseOK, 10, 0.5f);
+	public static Policy obligedToEncryptCredentials = new Policy(new Modality("Obliged"), encryptcredentials, encryptcredentialsNOK, encryptcredentialsOK, 10, 0.5f);
+	public static Policy obligedToSecureWarehouse = new Policy(new Modality("Obliged"), securewarehouse, warehouseSecurityNOK, warehouseSecurityOK, 10, 0.5f);
+	public static Policy obligedToBackupFinanceData = new Policy(new Modality("Obliged"), backupfinancedata, financeDataBackedUpNOK, financeDataBackedUpOK, 10, 0.5f);
+	public static Policy obligedToAuditFinances = new Policy(new Modality("Obliged"), auditfinances, financialControlNOK, financialControlOK, 10, 0.5f);
 	
-	public static Set<Policy> setOfPolicies = new HashSet<Policy>();
+	public static List<Policy> setOfPolicies = new ArrayList<Policy>();
 	
 	private static void initialiseSetOfPolicies() {
 		setOfPolicies.add(obligedToRemoveSpecialCharacters);
@@ -142,10 +143,9 @@ public class App {
 		
 	}
 	
-	private static void setPoliciesValues() {
-		Random rand = new Random();
+	public static void setPoliciesValues() {
 		for(Policy policy:setOfPolicies) {
-			policy.reward = (float) (rand.nextInt(20) + 1);
+			policy.reward = rand.nextFloat() * 20;
 			policy.punishment = rand.nextFloat() + 0.0001f;
 		}
 	}
@@ -186,16 +186,15 @@ public class App {
 	 * adapted from https://www.geeksforgeeks.org/randomly-select-items-from-a-list-in-java/
 	 */
 	
-	public static Set<Action> getPlayersActions(Set<Action> setofactions, int totalactions) { 
-		Random rand = new Random(); 
+	public static List<Action> getPlayersActions(List<Action> setofactions, int totalactions) {
 		
 		// create a temporary list for storing 
 		// selected element 
-		Set<Action> newActions = new HashSet<Action>();
+		List<Action> newActions = new ArrayList<Action>();
 		List<Action> listactions = new ArrayList<Action>(setofactions);
 		for (int i = 0; i < totalactions; i++) { 
 			
-			// take a raundom index between 0 to size  
+			// take a random index between 0 to size  
 			// of given List 
 			int randomIndex = rand.nextInt(listactions.size()); 
 			
@@ -208,9 +207,9 @@ public class App {
 		return newActions; 
 	}
 	
-	public static Set<Policy> applicablePolicies(Set<Action> setofactions) {
+	public static List<Policy> applicablePolicies(List<Action> setofactions) {
 		
-		Set<Policy> applicablePolicies = new HashSet<Policy>();
+		List<Policy> applicablePolicies = new ArrayList<Policy>();
 		for (Action action:setofactions) {
 			for (Policy policy:setOfPolicies) {
 				if (policy.actionName.equals(action)) {
@@ -219,6 +218,22 @@ public class App {
 			} 
 		}
 		return applicablePolicies;
+	}
+	
+	/*
+	 * taken on https://www.baeldung.com/java-executor-wait-for-threads
+	 */
+	public static void awaitTerminationAfterShutdown(ExecutorService threadPool) {
+		threadPool.shutdown();
+		try {
+			if(!threadPool.awaitTermination(60, TimeUnit.SECONDS)) {
+				threadPool.shutdownNow();
+			}
+		}
+		catch (InterruptedException ex) {
+			threadPool.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 	}
 	
 	
@@ -250,7 +265,10 @@ public class App {
 			System.out.println(e.getMessage());
 		}
 		
-		for (int setupid = maxsetupid + 1; setupid <= 25; setupid++) {
+		ExecutorService executor = Executors.newFixedThreadPool(1000);
+		
+
+		for (int setupid = maxsetupid + 1; setupid <= 26; setupid++) {
 			Random rand = new Random();
 			//System.out.println("...");
 			setPoliciesValues();
@@ -262,14 +280,14 @@ public class App {
 			
 			for (int sessionid = 1; sessionid <= 5; sessionid++) {
 				//int numPlayers = rand.nextInt(10) + 1;
-				ExecutorService executor = Executors.newFixedThreadPool(50);
-				for (int runid = 1; runid <= 50; runid++) {
+				//ExecutorService executor = Executors.newFixedThreadPool(50);
+				for (int runid = 1; runid <= 30; runid++) {
 					int numPlayers = rand.nextInt(10) + 1;
 					Map<String, Player> playerMap = new HashMap<String, Player>();
 					for (int k = 0; k < numPlayers; k++) {
 						String playerName = "agent" + Integer.toString(k);
-						Set<Action> playerActions = getPlayersActions(setOfActions, totalactions);
-						Set<Policy> playerPolicies = applicablePolicies(playerActions);
+						List<Action> playerActions = getPlayersActions(setOfActions, totalactions);
+						List<Policy> playerPolicies = applicablePolicies(playerActions);
 			        	playerMap.put(playerName, new Player(playerActions, playerPolicies, playerName, "", setupid, sessionid, runid));
 			        	playerMap.get(playerName).setName(playerName);
 			        	Util.insertMapping(setupid, sessionid, runid, playerName, playerActions.size(), playerPolicies.size());
@@ -286,6 +304,7 @@ public class App {
 			}
 		}
 
+		
 		/**
 		 * https://stackoverflow.com/questions/2711067/how-do-i-dynamically-name-objects-in-java
 		 */

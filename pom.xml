@@ -14,7 +14,7 @@
 		<dependency>
 		  <groupId>com.rabbitmq</groupId>
 		  <artifactId>amqp-client</artifactId>
-		  <version>5.7.2</version>
+		  <version>5.7.3</version>
 		</dependency>
 		<dependency>
 	  		<groupId>com.google.code.gson</groupId>
@@ -30,6 +30,31 @@
 	    <groupId>com.opencsv</groupId> 
 	    <artifactId>opencsv</artifactId> 
 	    <version>4.1</version>
-    </dependency> 
+    </dependency>
+	<dependency>
+	    <groupId>nz.ac.waikato.cms.weka</groupId>
+	    <artifactId>weka-stable</artifactId>
+	    <version>3.8.3</version>
+	</dependency>
+	<dependency>
+	    <groupId>com.github.haifengl</groupId>
+	    <artifactId>smile-core</artifactId>
+	    <version>1.5.3</version>
+	</dependency>
+	<dependency>
+	    <groupId>org.javatuples</groupId>
+	    <artifactId>javatuples</artifactId>
+	    <version>1.2</version>
+	</dependency>
+	<dependency>
+	    <groupId>org.apache.commons</groupId>
+	    <artifactId>commons-math3</artifactId>
+	    <version>3.6.1</version>
+	</dependency>
+	<dependency>
+      <groupId>com.github.haifengl</groupId>
+      <artifactId>smile-netlib</artifactId>
+      <version>1.5.3</version>
+    </dependency>
 	</dependencies>
 </project>
