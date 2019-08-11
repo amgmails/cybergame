@@ -299,7 +299,7 @@ public class App {
 			        executor.submit(game);     
 				}
 						
-				executor.awaitTermination(60 * sessionid, TimeUnit.SECONDS);
+				executor.awaitTermination(14 * sessionid, TimeUnit.SECONDS);
 				executor.shutdown();
 			}
 		}

@@ -53,7 +53,7 @@ public class GameEngine extends Thread{
 		}
 	}
 	
-	public List<Policy> setOfPolicies = new ArrayList<Policy>();
+	public Set<Policy> setOfPolicies = new HashSet<Policy>();
 	
 	private void initialiseSetOfPolicies() {
 		for(String player:playerMap.keySet()) {
@@ -72,6 +72,10 @@ public class GameEngine extends Thread{
 	
 	public Map<String, Action> tempActionMap = new HashMap<String, Action>();
 	public Map<String, Float> scoreMap = new HashMap<String, Float>();
+	public Map<String, Integer> plaComplMap = new HashMap<String, Integer>();
+	public Map<String, Integer> plaViolMap = new HashMap<String, Integer>();
+	public Map<String, Integer> polComplMap = new HashMap<String, Integer>();
+	public Map<String, Integer> polViolMap = new HashMap<String, Integer>();
 	
 	private void initialiseScores() {
 		
@@ -129,11 +133,11 @@ public class GameEngine extends Thread{
 	}
 	
 	private boolean isPolicyViolated(Policy policy) {
-		if (policy.modality.modality.contentEquals("P")) {
+		if (policy.modality.modality.contentEquals("Permitted")) {
 			return false;
 		}
-		else if (policy.modality.modality.contentEquals("O")) {
-			if (stateOfGame.contains(policy.actionName.preCondition)) {
+		else if (policy.modality.modality.contentEquals("Obliged")) {
+			if (stateOfGame.containsAll(policy.actionName.preCondition)) {
 				return true;
 			}
 			else {
@@ -141,7 +145,7 @@ public class GameEngine extends Thread{
 			}
 		}
 		else {
-			if (stateOfGame.contains(policy.actionName.preCondition)) {
+			if (stateOfGame.containsAll(policy.actionName.preCondition)) {
 				return false;
 			}
 			else {
@@ -255,7 +259,7 @@ public class GameEngine extends Thread{
             	
                 //inserting values into the database/csv file
         		for (String player:playerMap.keySet()) {
-        			gameData.add(new String[] {Integer.toString(setupid), Integer.toString(sessionid), Integer.toString(runid), Integer.toString(this.ticks - 1), player, Float.toString(scoreMap.get(player))});
+        			gameData.add(new String[] {Integer.toString(setupid), Integer.toString(sessionid), Integer.toString(runid), Integer.toString(this.ticks - 1), player, Float.toString(scoreMap.get(player))/*, Integer.toString(plaViolMap.get(player)), Integer.toString(plaComplMap.get(player))*/});
                 }
                 
 	            //System.out.println("REQUEST FOR ACTIONS --> SENDING STATE OF GAME");
@@ -276,8 +280,34 @@ public class GameEngine extends Thread{
                 		float max_penalty = 0.0f;
                 		for(Policy policy:playerMap.get(player).setOfPolicies) {
                 			if (isPolicyViolated(policy)) {
+                				try {
+                					plaViolMap.put(player, plaViolMap.get(player) + 1);
+                				}
+                				catch(Exception e) {
+                					plaViolMap.put(player, 1);
+                				}
+                				try {
+                					polViolMap.put(policy.actionName.actionName.getName(), polViolMap.get(policy.actionName.actionName.getName()) + 1);
+                				}
+                				catch(Exception e) {
+                					polViolMap.put(policy.actionName.actionName.getName(), 1);
+                				}
                 				if(policy.punishment > max_penalty) {
                 					max_penalty = policy.punishment;
+                				}
+                			}
+                			else {
+                				try {
+                					plaComplMap.put(player, plaComplMap.get(player) + 1);
+                				}
+                				catch(Exception e) {
+                					plaComplMap.put(player, 1);
+                				}
+                				try {
+                					polComplMap.put(policy.actionName.actionName.getName(), polComplMap.get(policy.actionName.actionName.getName()) + 1);
+                				}
+                				catch(Exception e) {
+                					polComplMap.put(policy.actionName.actionName.getName(), 1);
                 				}
                 			}
                 		}
@@ -285,6 +315,45 @@ public class GameEngine extends Thread{
                 		scoreMap.put(player, scoreMap.get(player) * (1 - max_penalty));
                 	}
                 }
+                
+//            	for (String player:playerMap.keySet()) {
+////            		float max_penalty = 0.0f;
+//            		for(Policy policy:playerMap.get(player).setOfPolicies) {
+//            			if (isPolicyViolated(policy)) {
+//            				try {
+//            					plaViolMap.put(player, plaViolMap.get(player) + 1);
+//            				}
+//            				catch(Exception e) {
+//            					plaViolMap.put(player, 1);
+//            				}
+//            				try {
+//            					polViolMap.put(policy.actionName.actionName.getName(), polViolMap.get(policy.actionName.actionName.getName()) + 1);
+//            				}
+//            				catch(Exception e) {
+//            					polViolMap.put(policy.actionName.actionName.getName(), 1);
+//            				}
+////            				if(policy.punishment > max_penalty) {
+////            					max_penalty = policy.punishment;
+////            				}
+//            			}
+//            			else {
+//            				try {
+//            					plaComplMap.put(player, plaComplMap.get(player) + 1);
+//            				}
+//            				catch(Exception e) {
+//            					plaComplMap.put(player, 1);
+//            				}
+//            				try {
+//            					polComplMap.put(policy.actionName.actionName.getName(), polComplMap.get(policy.actionName.actionName.getName()) + 1);
+//            				}
+//            				catch(Exception e) {
+//            					polComplMap.put(policy.actionName.actionName.getName(), 1);
+//            				}
+//            			}
+//            		}
+//            		
+////            		scoreMap.put(player, scoreMap.get(player) * (1 - max_penalty));
+//            	}
                 
                 this.ticks +=1;
                 wait(5);
@@ -324,7 +393,47 @@ public class GameEngine extends Thread{
             stdev /= scoreMap.size();
             stdev = (float) Math.sqrt(stdev);
             
-            String[] data = {Float.toString(average), Float.toString(stdev)};
+            List<String> rolesList = new ArrayList<String>();
+            List<Float> scoreList = new ArrayList<Float>();
+            List<String> policyList = new ArrayList<String>();
+            List<Integer> plaVioList = new ArrayList<Integer>();
+            List<Integer> plaCompList = new ArrayList<Integer>();
+            List<Integer> polVioList = new ArrayList<Integer>();
+            List<Integer> polCompList = new ArrayList<Integer>();
+            for(String player:playerMap.keySet()) {
+            	rolesList.add(playerMap.get(player).role);
+            	scoreList.add(scoreMap.get(player));
+            	if(plaViolMap.containsKey(player)) {
+            		plaVioList.add(plaViolMap.get(player));
+            	}
+            	else {
+            		plaVioList.add(0);
+            	}
+            	if(plaComplMap.containsKey(player)) {
+            		plaCompList.add(plaComplMap.get(player));
+            	}
+            	else {
+            		plaCompList.add(0);
+            	}
+            }
+            
+            for(Policy policy:setOfPolicies) {
+            	policyList.add(policy.actionName.actionName.getName());
+            	if(polViolMap.containsKey(policy.actionName.actionName.getName())) {
+            		polVioList.add(polViolMap.get(policy.actionName.actionName.getName()));
+            	}
+            	else {
+            		polVioList.add(0);
+            	}
+            	if(polComplMap.containsKey(policy.actionName.actionName.getName())) {
+            		polCompList.add(polComplMap.get(policy.actionName.actionName.getName()));
+            	}
+            	else {
+            		polCompList.add(0);
+            	}
+            }
+            
+            String[] data = {Float.toString(average), Float.toString(stdev), rolesList.toString(), scoreList.toString(), plaVioList.toString(), plaCompList.toString(), policyList.toString(), polVioList.toString(), polCompList.toString()};
             FileWriter outputfile = new FileWriter(file,true);
             CSVWriter writer = new CSVWriter(outputfile);
             writer.writeNext(data);
